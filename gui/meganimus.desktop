@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Meganimus
+StartupWMClass=meganimus
+Comment=A launcher for native and emulator games
+Categories=Game;
+Keywords=gaming;emulator;
+Exec=meganimus
+Icon=applications-all
+Terminal=false
+Type=Application
