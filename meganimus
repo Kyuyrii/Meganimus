@@ -38,7 +38,7 @@ SUPPORTED_LANGUAGES = {
     "Português": "pt_BR",
 }
 
-__version__ = "0.3"
+__version__ = "0.4"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 TRANSLATIONS = {
@@ -4904,7 +4904,7 @@ if __name__ == "__main__":
     # Loads settings
     settings = load_settings()
     # Uses full saved locale, or LANG defined in the module (which already has 'pt_BR.UTF-8', for example)
-    current_lang = settings.get("language", LANG)  
+    current_lang = settings["design"].get("language", LANG)
     LANG = current_lang  # Update the global variable
     app = QApplication(sys.argv)
 
