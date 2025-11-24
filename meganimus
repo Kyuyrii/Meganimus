@@ -32,18 +32,12 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-# Supported languages
-SUPPORTED_LANGUAGES = {
-    "English": "en_US",
-    "Português": "pt_BR",
-}
-
-__version__ = "0.4"
+__version__ = "0.4.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
-TRANSLATIONS = {
+BUILTIN_TRANSLATIONS = {
     'en_US': {
-        "ABOUT_TEXT_HTML": f"""<b>Meganimus</b><br>
+        "ABOUT_TEXT_HTML": """<b>Meganimus</b><br>
         Version: {__version__}<br><br>
         A launcher to centralize your native Linux and emulator games.<br>
         License: <a href='https://www.gnu.org/licenses/gpl-3.0.html.en'>GPLv3</a><br>
@@ -177,7 +171,7 @@ TRANSLATIONS = {
         "QT_STYLE": "QT style",
         "RESET_BUTTON_MULTIPLE_EDIT": "Reset",
         "REMOVE": "Remove",
-        "REMOVE_MULTIPLE_PORTALS": "Remove multiple PORTALs",
+        "REMOVE_MULTIPLE_PORTALS": "Remove multiple portals",
         "REMOVE_SELECTED": "Remove selected",
         "EXECUTOR": "Executor",
         "RUNNING_COMMAND": "Running command: {command}",
@@ -222,7 +216,7 @@ TRANSLATIONS = {
         "YES_BUTTON": "Yes",
     },
     'pt_BR': {
-        "ABOUT_TEXT_HTML": f"""<b>Meganimus</b><br>
+        "ABOUT_TEXT_HTML": """<b>Meganimus</b><br>
         Versão: {__version__}<br><br>
         Um launcher para centralizar seus jogos nativos de Linux e de emuladores.<br>
         Licença: <a href='https://www.gnu.org/licenses/gpl-3.0.html'>GPLv3</a><br>
@@ -402,14 +396,72 @@ TRANSLATIONS = {
     }
 }
 
-def tr(key, **kwargs):
-    translation_dict = TRANSLATIONS.get(LANG, TRANSLATIONS['en_US'])
-    translated_string = translation_dict.get(key, TRANSLATIONS['en_US'].get(key, key))
+# Loads translations from external TOML files.
+def load_external_translations():
+    external_translations = {}
+    supported_languages = {"English USA": "en_US", "Português Brasil": "pt_BR"}
     
-    try:
-        return translated_string.format(**kwargs)
-    except KeyError:
-        return translated_string
+    # Translation folders
+    translation_dirs = [
+        Path.home() / "AppsFiles" / "Meganimus" / "translation",
+        Path("/usr/share/meganimus/translation"),
+        Path(__file__).parent / "translation",
+        Path(sys.argv[0]).parent / "translation"
+    ]
+    
+    for trans_dir in translation_dirs:
+        if trans_dir.exists():
+            for toml_file in trans_dir.glob("meganimus-translation-*.toml"):
+                try:
+                    lang_code = toml_file.stem.replace("meganimus-translation-", "")
+                    with open(toml_file, 'r', encoding='utf-8') as f:
+                        lang_data = toml.load(f)
+                    
+                    # Add to translations
+                    external_translations[lang_code] = lang_data
+                    
+                    # Adds to supported languages
+                    lang_name = lang_data.get("language_name", lang_code)
+                    supported_languages[lang_name] = lang_code
+                    
+                    print(f"Loaded translation: {lang_name} ({lang_code})")
+                    
+                except Exception as e:
+                    print(f"Error loading translation {toml_file}: {e}")
+    
+    return external_translations, supported_languages
+
+# Load external translations
+EXTERNAL_TRANSLATIONS, SUPPORTED_LANGUAGES = load_external_translations()
+
+# First, try the language configured in external translations.
+def tr(key, **kwargs):
+    # Get the translated string (from external or embedded translations)
+    translated_string = None
+    
+    if LANG in EXTERNAL_TRANSLATIONS:
+        translation_dict = EXTERNAL_TRANSLATIONS[LANG]
+        translated_string = translation_dict.get(key)
+    
+    # Fallback to embedded translations if not found in external
+    if not translated_string:
+        translation_dict = BUILTIN_TRANSLATIONS.get(LANG, BUILTIN_TRANSLATIONS['en_US'])
+        translated_string = translation_dict.get(key, BUILTIN_TRANSLATIONS['en_US'].get(key, key))
+    
+    # If we have a translated string, process special variables and formatting
+    if translated_string:
+        # Replace special variables
+        translated_string = translated_string.replace("{__version__}", __version__)
+        translated_string = translated_string.replace("{__creator__}", __creator__)
+        
+        # Apply formatting with any additional kwargs
+        try:
+            return translated_string.format(**kwargs)
+        except KeyError:
+            return translated_string
+    
+    # If no translation found, return the key itself
+    return key
 
 # PyQt6 Imports
 try:
@@ -1010,11 +1062,6 @@ class SettingsDialog(QDialog):
                 executor_type=executor_type,
                 executor_command_str=executor_command_str
             )
-        else:
-            QMessageBox.warning(
-                self,
-                tr("APP_NAME"),
-                tr("CANNOT_START_EXECUTOR"))
 
     def save_and_close(self):
         self.settings["design"]["qt_style"] = self.style_combo.currentText()
@@ -3377,7 +3424,7 @@ class Meganimus(QMainWindow):
             icon_width = icon_width_grid
             icon_height = int(icon_width * (620 / 1920))
             grid_width = icon_width + 5
-            grid_height = icon_height + 40
+            grid_height = icon_height + 30
             self.portal_list_widget.setIconSize(QSize(icon_width, icon_height))
             self.portal_list_widget.setGridSize(QSize(grid_width, grid_height))
             self.portal_list_widget.setMovement(QListWidget.Movement.Static)
