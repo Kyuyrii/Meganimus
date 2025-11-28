@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "0.5"
+__version__ = "1.0"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -669,7 +669,7 @@ class SettingsDialog(QDialog):
         # Executors section
         executors_label = QLabel(tr("EXECUTORS"))
         self.executor_filter = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         self.executor_filter.addItems(executors)
 
         top_layout.addRow(executors_label, self.executor_filter)
@@ -1114,7 +1114,7 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
 
@@ -1320,12 +1320,12 @@ class AddPortalDialog(QDialog):
             self.game_path_input.setText(folder_path)
 
     def select_portal_art(self):
-        art_dir = Path(self.parent().meganimus_dir) / "sgdb" / "heroes"
-        art_dir.mkdir(parents=True, exist_ok=True)
+        heroes_dir = Path(self.parent().meganimus_dir) / "sgdb" / "heroes"
+        heroes_dir.mkdir(parents=True, exist_ok=True)
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             tr("SELECT_PORTAL_ART"),
-            str(art_dir),
+            str(heroes_dir),
             tr("IMAGE_FILTER")
         )
         if file_path:
@@ -1352,12 +1352,7 @@ class AddPortalDialog(QDialog):
         fps_hud_type = self.fps_hud_combo.currentData()
 
         art_path = self.portal_art_input.text().strip()
-        if not art_path:
-            art_path = self.resolve_default_art_path(self.name_input.text())
-
         gui_path = self.portal_gui_input.text().strip()
-        if not gui_path:
-            gui_path = self.resolve_default_gui_path(self.name_input.text())
 
         return {
             "name": self.name_input.text(),
@@ -1373,26 +1368,6 @@ class AddPortalDialog(QDialog):
             "portal_args": self.portal_args_input.text(),
         }
 
-    def resolve_default_art_path(self, portal_name: str) -> str:
-        heroes_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "heroes"
-        for folder in heroes_dir.iterdir():
-            if folder.is_dir() and folder.name.lower() == portal_name.lower():
-                for ext in ("*.jpg", "*.jpeg", "*.png", "*webp"):
-                    images = list(folder.glob(ext))
-                    if images:
-                        return str(images[0])
-        return ""
-
-    def resolve_default_gui_path(self, portal_name: str) -> str:
-        icons_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "icons"
-        for folder in icons_dir.iterdir():
-            if folder.is_dir() and folder.name.lower() == portal_name.lower():
-                for ext in ("*.jpg", "*.jpeg", "*.png", "*webp"):
-                    images = list(folder.glob(ext))
-                    if images:
-                        return str(images[0])
-        return ""
-
     def save_and_accept(self):
         portal_data = self.get_form_data()
         if portal_data["name"] and portal_data["game_path"]:
@@ -1403,83 +1378,105 @@ class AddPortalDialog(QDialog):
             art_dir.mkdir(parents=True, exist_ok=True)
             gui_dir.mkdir(parents=True, exist_ok=True)
 
-            safe_name = portal_data["name"].replace(" ", "_").lower()
-            portal_file = config_dir / f"portal-info-{safe_name}.toml"
+            safe_portal_name = portal_data["name"].replace(" ", "_").lower()
+            portal_file = config_dir / f"portal-info-{safe_portal_name}.toml"
 
             # Check for duplicate portal name
             if portal_file.exists() and (not self.portal_data or self.portal_data.get("name", "").lower() != portal_data["name"].lower()):
                 QMessageBox.warning(self, tr("APP_NAME"), tr("PORTAL_ALREADY_EXISTS"))
                 return
 
-            # Handle artwork copy or rename
-            if portal_data.get("art_path") and (not self.portal_data or portal_data["art_path"] != self.portal_data.get("art_path")):
-                # User selected a new image
-                # Remove old images with old name
-                if self.portal_data:
-                    old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
-                    for old_file in art_dir.glob(f"{old_safe_name}.*"):
-                        try:
-                            old_file.unlink()
-                        except Exception:
-                            pass
-
-                # Copy new image
+            # art_path
+            if portal_data.get("art_path"):
                 art_path = Path(portal_data["art_path"])
-                art_extension = art_path.suffix.lower()
-                art_filename = f"{safe_name}{art_extension}"
-                art_destination = art_dir / art_filename
-                try:
-                    shutil.copyfile(art_path, art_destination)
-                    portal_data["art_path"] = str(art_destination)
-                except Exception:
-                    portal_data["art_path"] = ""
-            elif self.portal_data and self.portal_data.get("art_path"):
-                # No new image selected, rename old art if portal name changed
-                old_art_path = Path(self.portal_data['art_path'])
-                if old_art_path.exists():
-                    old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
-                    if old_safe_name != safe_name:
+                if art_path.exists() and art_path.is_file():
+                    # Remove old images with old name only if we're selecting a NEW file
+                    if self.portal_data and self.portal_data.get("art_path"):
+                        old_art_path = Path(self.portal_data['art_path'])
+                        # Only remove if the new file is different from the old one
+                        if old_art_path != art_path:
+                            old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
+                            for old_file in art_dir.glob(f"{old_safe_name}.*"):
+                                try:
+                                    old_file.unlink()
+                                except Exception:
+                                    pass
+                    
+                    # Copy new image only if it's not already in the art_dir
+                    if art_path.parent != art_dir:
+                        art_extension = art_path.suffix.lower()
+                        new_art_path = art_dir / f"{safe_portal_name}{art_extension}"
                         try:
-                            new_art_path = art_dir / f"{safe_name}{old_art_path.suffix.lower()}"
-                            old_art_path.rename(new_art_path)
+                            shutil.copyfile(art_path, new_art_path)
                             portal_data["art_path"] = str(new_art_path)
                         except Exception:
-                            portal_data["art_path"] = str(old_art_path)
+                            portal_data["art_path"] = ""
+                    else:
+                        # File is already in art_dir, just update the path with new name if needed
+                        if self.portal_data:
+                            old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
+                            if old_safe_name != safe_portal_name:
+                                new_art_path = art_dir / f"{safe_portal_name}{art_path.suffix.lower()}"
+                                try:
+                                    art_path.rename(new_art_path)
+                                    portal_data["art_path"] = str(new_art_path)
+                                except Exception:
+                                    portal_data["art_path"] = str(art_path)
+            elif self.portal_data and self.portal_data.get("art_path"):
+                # User removed the art path - delete old file
+                old_art_path = Path(self.portal_data['art_path'])
+                if old_art_path.exists() and old_art_path.is_file() and old_art_path.parent == art_dir:
+                    try:
+                        old_art_path.unlink()
+                    except Exception:
+                        pass
+                portal_data["art_path"] = ""
 
-            # Handle gui icon copy / rename
-            if portal_data.get("gui_path") and (not self.portal_data or portal_data["gui_path"] != self.portal_data.get("gui_path")):
-                # User selected a new image
-                # Remove old images with old name
-                if self.portal_data:
-                    old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
-                    for old_file in gui_dir.glob(f"{old_safe_name}.*"):
-                        try:
-                            old_file.unlink()
-                        except Exception:
-                            pass
-
-                # Copy new image
+            # gui_path
+            if portal_data.get("gui_path"):
                 gui_path = Path(portal_data["gui_path"])
-                gui_extension = gui_path.suffix.lower()
-                gui_filename = f"{safe_name}{gui_extension}"
-                gui_destination = gui_dir / gui_filename
-                try:
-                    shutil.copyfile(gui_path, gui_destination)
-                    portal_data["gui_path"] = str(gui_destination)
-                except Exception:
-                    portal_data["gui_path"] = ""
-            elif self.portal_data and self.portal_data.get("gui_path"):
-                # No new image selected, rename old gui if portal name changed
-                old_gui_path = Path(self.portal_data['gui_path'])
-                if old_gui_path.exists():
-                    old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
-                    if old_safe_name != safe_name:
+                if gui_path.exists() and gui_path.is_file():
+                    # Remove old images with old name only if we're selecting a NEW file
+                    if self.portal_data and self.portal_data.get("gui_path"):
+                        old_gui_path = Path(self.portal_data['gui_path'])
+                        # Only remove if the new file is different from the old one
+                        if old_gui_path != gui_path:
+                            old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
+                            for old_file in gui_dir.glob(f"{old_safe_name}.*"):
+                                try:
+                                    old_file.unlink()
+                                except Exception:
+                                    pass
+                    
+                    # Copy new image only if it's not already in the gui_dir
+                    if gui_path.parent != gui_dir:
+                        gui_extension = gui_path.suffix.lower()
+                        new_gui_path = gui_dir / f"{safe_portal_name}{gui_extension}"
                         try:
-                            new_gui_path = gui_dir / f"{safe_name}{old_gui_path.suffix.lower()}"
-                            old_gui_path.rename(new_gui_path)
+                            shutil.copyfile(gui_path, new_gui_path)
                             portal_data["gui_path"] = str(new_gui_path)
                         except Exception:
-                            portal_data["gui_path"] = str(old_gui_path)
+                            portal_data["gui_path"] = ""
+                    else:
+                        # File is already in gui_dir, just update the path with new name if needed
+                        if self.portal_data:
+                            old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
+                            if old_safe_name != safe_portal_name:
+                                new_gui_path = gui_dir / f"{safe_portal_name}{gui_path.suffix.lower()}"
+                                try:
+                                    gui_path.rename(new_gui_path)
+                                    portal_data["gui_path"] = str(new_gui_path)
+                                except Exception:
+                                    portal_data["gui_path"] = str(gui_path)
+            elif self.portal_data and self.portal_data.get("gui_path"):
+                # User removed the gui path - delete old file
+                old_gui_path = Path(self.portal_data['gui_path'])
+                if old_gui_path.exists() and old_gui_path.is_file() and old_gui_path.parent == gui_dir:
+                    try:
+                        old_gui_path.unlink()
+                    except Exception:
+                        pass
+                portal_data["gui_path"] = ""
 
             # Save TOML
             try:
@@ -1491,10 +1488,10 @@ class AddPortalDialog(QDialog):
 
             # Remove old TOML if name changed
             if self.portal_data:
-                old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
-                new_safe_name = portal_data['name'].replace(" ", "_").lower()
-                if old_safe_name != new_safe_name:
-                    old_portal_file_path = config_dir / f"portal-info-{old_safe_name}.toml"
+                old_safe_portal_name = self.portal_data.get('name', '').replace(" ", "_").lower()
+                new_safe_portal_name = portal_data['name'].replace(" ", "_").lower()
+                if old_safe_portal_name != new_safe_portal_name:
+                    old_portal_file_path = config_dir / f"portal-info-{old_safe_portal_name}.toml"
                     if old_portal_file_path.exists():
                         old_portal_file_path.unlink()
 
@@ -1517,8 +1514,8 @@ class AddPortalDialog(QDialog):
             return
 
         config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
-        safe_name = portal_name.replace(" ", "_").lower()
-        portal_file = config_dir / f"portal-info-{safe_name}.toml"
+        safe_portal_name = portal_name.replace(" ", "_").lower()
+        portal_file = config_dir / f"portal-info-{safe_portal_name}.toml"
 
         if not portal_file.exists():
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR"))
@@ -1571,7 +1568,7 @@ class MultipleCreatePortalsDialog(QDialog):
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
         executors = [
-            "AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
+            "AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
         top_grid.addWidget(executor_label, 0, 0)
@@ -1754,20 +1751,20 @@ class MultipleCreatePortalsDialog(QDialog):
                 QMessageBox.warning(self, tr("APP_NAME"), tr("MANDATORY_FIELDS_ERROR"))
                 return
 
-            safe_name = name.replace(" ", "_").lower()
+            safe_portal_name = name.replace(" ", "_").lower()
 
             # Duplicate in own list
-            if safe_name in existing_names:
+            if safe_portal_name in existing_names:
                 QMessageBox.warning(
                     self,
                     tr("APP_NAME"),
                     tr("DUPLICATE_NAME_IN_LIST", name=name)
                 )
                 return
-            existing_names.add(safe_name)
+            existing_names.add(safe_portal_name)
 
             # Duplicate in filesystem
-            test_path = config_dir / f"portal-info-{safe_name}.toml"
+            test_path = config_dir / f"portal-info-{safe_portal_name}.toml"
             if test_path.exists():
                 QMessageBox.warning(
                     self,
@@ -1796,62 +1793,8 @@ class MultipleCreatePortalsDialog(QDialog):
         for i in range(self.file_list.topLevelItemCount()):
             item = self.file_list.topLevelItem(i)
             name = item.name_input.text().strip()
-            safe_name = name.replace(" ", "_").lower()
-            file_path = config_dir / f"portal-info-{safe_name}.toml"
-
-            # Determining the path of art
-            art_path = getattr(item, "art_path", "")
-            if not art_path:
-                heroes_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "heroes"
-                for folder in heroes_dir.iterdir():
-                    if folder.is_dir() and folder.name.lower() == name.lower():
-                        for ext in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
-                            images = list(folder.glob(ext))
-                            if images:
-                                art_path = str(images[0])
-                                break
-                    if art_path:
-                        break
-
-            # Copy art to art_dir if it exists
-            if art_path:
-                art_src = Path(art_path)
-                if art_src.exists():
-                    ext = art_src.suffix.lower()
-                    dest_path = art_dir / f"{safe_name}{ext}"
-                    try:
-                        if not dest_path.exists():
-                            shutil.copyfile(art_src, dest_path)
-                        art_path = str(dest_path)
-                    except Exception:
-                        art_path = ""
-
-            # Determining the path of gui icon
-            gui_path = getattr(item, "gui_path", "")
-            if not gui_path:
-                icons_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "icons"
-                for folder in icons_dir.iterdir():
-                    if folder.is_dir() and folder.name.lower() == name.lower():
-                        for ext in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
-                            images = list(folder.glob(ext))
-                            if images:
-                                gui_path = str(images[0])
-                                break
-                    if gui_path:
-                        break
-
-            # Copy gui to gui_dir if it exists
-            if gui_path:
-                gui_src = Path(gui_path)
-                if gui_src.exists():
-                    ext = gui_src.suffix.lower()
-                    dest_path = gui_dir / f"{safe_name}{ext}"
-                    try:
-                        if not dest_path.exists():
-                            shutil.copyfile(gui_src, dest_path)
-                        gui_path = str(dest_path)
-                    except Exception:
-                        gui_path = ""
+            safe_portal_name = name.replace(" ", "_").lower()
+            file_path = config_dir / f"portal-info-{safe_portal_name}.toml"
 
             # Save TOML
             try:
@@ -1860,8 +1803,8 @@ class MultipleCreatePortalsDialog(QDialog):
                         "name": name,
                         "executor": executor,
                         "game_path": item.path,
-                        "art_path": art_path,
-                        "gui_path": gui_path,
+                        "art_path": "",
+                        "gui_path": "",
                         "language": selected_lang,
                         "use_gamemode": item.gamemode_cb.isChecked(),
                         "show_fps": item.show_fps_cb.isChecked(),
@@ -1879,8 +1822,8 @@ class MultipleCreatePortalsDialog(QDialog):
     def save_portal_data(self, data):
         config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
-        safe_name = data["name"].replace(" ", "_").lower()
-        file_path = config_dir / f"portal-info-{safe_name}.toml"
+        safe_portal_name = data["name"].replace(" ", "_").lower()
+        file_path = config_dir / f"portal-info-{safe_portal_name}.toml"
         if file_path.exists():
             return
         with open(file_path, 'w', encoding="utf-8") as f:
@@ -1904,7 +1847,7 @@ class MultipleRemovePortalDialog(QDialog):
         # Executor filter combobox
         self.executor_filter = QComboBox()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         for executor in executors:
             self.executor_filter.addItem(executor)
         self.executor_filter.currentIndexChanged.connect(self.update_portal_list)
@@ -2067,7 +2010,7 @@ class MultipleEditPortalDialog(QDialog):
         # Executor filter combobox
         self.executor_filter = QComboBox()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         for executor in executors:
             self.executor_filter.addItem(executor)
         self.executor_filter.currentIndexChanged.connect(self.update_portal_list)
@@ -2116,7 +2059,7 @@ class MultipleEditPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of available executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         self.executor_combo.insertItem(0, tr("DO_NOT_CHANGE"))
         self.executor_combo.setCurrentIndex(0)
         for executor in executors:
@@ -2351,13 +2294,13 @@ class MultipleEditPortalDialog(QDialog):
             self.art_input.setText(file_path)
 
     def select_portal_gui(self):
-        heroes_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "icons"
-        heroes_dir.mkdir(parents=True, exist_ok=True)
+        icons_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "icons"
+        icons_dir.mkdir(parents=True, exist_ok=True)
 
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             tr("SELECT_PORTAL_GUI"),
-            str(heroes_dir),
+            str(icons_dir),
             tr("IMAGE_FILTER")
         )
         if file_path:
@@ -2419,26 +2362,6 @@ class MultipleEditPortalDialog(QDialog):
         self.env_input.setText(tr("DO_NOT_CHANGE"))
         self.args_input.setText(tr("DO_NOT_CHANGE"))
 
-    def resolve_default_art_path(self, portal_name: str) -> str:
-        heroes_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "heroes"
-        for folder in heroes_dir.iterdir():
-            if folder.is_dir() and folder.name.lower() == portal_name.lower():
-                for ext in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
-                    images = list(folder.glob(ext))
-                    if images:
-                        return str(images[0])
-        return ""
-
-    def resolve_default_gui_path(self, portal_name: str) -> str:
-        icons_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "icons"
-        for folder in icons_dir.iterdir():
-            if folder.is_dir() and folder.name.lower() == portal_name.lower():
-                for ext in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
-                    images = list(folder.glob(ext))
-                    if images:
-                        return str(images[0])
-        return ""
-
     # Apply changes
     def apply_multiple_edit(self):
         selected = [cb for cb in self.portal_checkboxes.values() if cb.isChecked()]
@@ -2465,35 +2388,71 @@ class MultipleEditPortalDialog(QDialog):
             art_input_text = self.art_input.text().strip()
             if art_input_text != tr("DO_NOT_CHANGE"):
                 if not art_input_text:
-                    art_input_text = self.resolve_default_art_path(data["name"])
+                    # Remove previous file if it exists.
+                    if data.get("art_path"):
+                        old_art_path = Path(data["art_path"])
+                        if old_art_path.exists() and old_art_path.is_file():
+                            try:
+                                old_art_path.unlink()
+                            except Exception:
+                                pass
+                    data["art_path"] = ""
+                else:
+                    art_path = Path(art_input_text)
+                    if art_path.exists() and art_path.is_file():
+                        # Remove previous file if it exists.
+                        if data.get("art_path"):
+                            old_art_path = Path(data["art_path"])
+                            if old_art_path.exists() and old_art_path.is_file():
+                                try:
+                                    old_art_path.unlink()
+                                except Exception:
+                                    pass
 
-                if art_input_text:
-                    try:
                         art_dir = Path.home() / "AppsFiles" / "Meganimus" / "art"
                         art_dir.mkdir(parents=True, exist_ok=True)
-                        ext = Path(art_input_text).suffix.lower()
+                        ext = art_path.suffix.lower()
                         new_art_path = art_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
-                        shutil.copyfile(art_input_text, new_art_path)
-                        data["art_path"] = str(new_art_path)
-                    except FileNotFoundError:
-                        pass
+                        try:
+                            shutil.copyfile(art_path, new_art_path)
+                            data["art_path"] = str(new_art_path)
+                        except Exception:
+                            data["art_path"] = ""
 
-            # Gui icon
+            # Gui
             gui_input_text = self.gui_input.text().strip()
             if gui_input_text != tr("DO_NOT_CHANGE"):
                 if not gui_input_text:
-                    gui_input_text = self.resolve_default_gui_path(data["name"])
+                    # Remove previous file if it exists.
+                    if data.get("gui_path"):
+                        old_gui_path = Path(data["gui_path"])
+                        if old_gui_path.exists() and old_gui_path.is_file():
+                            try:
+                                old_gui_path.unlink()
+                            except Exception:
+                                pass
+                    data["gui_path"] = ""
+                else:
+                    gui_path = Path(gui_input_text)
+                    if gui_path.exists() and gui_path.is_file():
+                        # Remove GUI antiga se existir
+                        if data.get("gui_path"):
+                            old_gui_path = Path(data["gui_path"])
+                            if old_gui_path.exists() and old_gui_path.is_file():
+                                try:
+                                    old_gui_path.unlink()
+                                except Exception:
+                                    pass
 
-                if gui_input_text:
-                    try:
                         gui_dir = Path.home() / "AppsFiles" / "Meganimus" / "art" / "gui"
                         gui_dir.mkdir(parents=True, exist_ok=True)
-                        ext = Path(gui_input_text).suffix.lower()
+                        ext = gui_path.suffix.lower()
                         new_gui_path = gui_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
-                        shutil.copyfile(gui_input_text, new_gui_path)
-                        data["gui_path"] = str(new_gui_path)
-                    except FileNotFoundError:
-                        pass
+                        try:
+                            shutil.copyfile(gui_path, new_gui_path)
+                            data["gui_path"] = str(new_gui_path)
+                        except Exception:
+                            data["gui_path"] = ""
 
             # Language
             lang = self.lang_combo.currentText()
@@ -3809,7 +3768,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
