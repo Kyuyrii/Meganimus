@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "0.4.3"
+__version__ = "0.5"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -53,7 +53,7 @@ BUILTIN_TRANSLATIONS = {
         "APP_NAME": "Meganimus",
         "ARTS_LOAD_ERROR": "[DEBUG] Failed to load arts: {error}",
         "AUTO_TRANSFER_BUTTON": "Automatic mode",
-        "AUTO_TRANSFER_EXPLAIN": "Do you want to try downloading hero artwork and icons for all the summons that don't have them?<br>After the download, they will be applied automatically.",
+        "AUTO_TRANSFER_EXPLAIN": "Do you want to try downloading hero artwork and icons for all the portals that don't have them?<br>After the download, they will be applied automatically.",
         "AUTO_TRANSFER_FINISHED": "Automatic transfer completed",
         "AUTO_TRANSFER_GENERAL_ERROR": "General error in {inv_name}: {error}",
         "AUTO_TRANSFER_NO_MISSING_ARTS": "All portals already have hero art and icon",
@@ -409,9 +409,9 @@ def load_external_translations():
         Path(sys.argv[0]).parent / "translation"
     ]
     
-    for trans_dir in translation_dirs:
-        if trans_dir.exists():
-            for toml_file in trans_dir.glob("meganimus-translation-*.toml"):
+    for translation_folder in translation_dirs:
+        if translation_folder.exists():
+            for toml_file in translation_folder.glob("meganimus-translation-*.toml"):
                 try:
                     lang_code = toml_file.stem.replace("meganimus-translation-", "")
                     with open(toml_file, 'r', encoding='utf-8') as f:
@@ -582,8 +582,8 @@ def load_settings() -> dict:
     current_style = data["design"]["qt_style"]
     if current_style != "indefinite" and current_style not in QStyleFactory.keys():
         data["design"]["qt_style"] = "indefinite"
+        save_settings(data)
 
-    save_settings(data)
     return data
 
 def save_settings(data: dict) -> None:
@@ -669,7 +669,7 @@ class SettingsDialog(QDialog):
         # Executors section
         executors_label = QLabel(tr("EXECUTORS"))
         self.executor_filter = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x","Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
         self.executor_filter.addItems(executors)
 
         top_layout.addRow(executors_label, self.executor_filter)
@@ -1114,7 +1114,7 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x","Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
 
@@ -1571,7 +1571,7 @@ class MultipleCreatePortalsDialog(QDialog):
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
         executors = [
-            "AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x","Ryubing"]
+            "AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
         top_grid.addWidget(executor_label, 0, 0)
@@ -1904,7 +1904,7 @@ class MultipleRemovePortalDialog(QDialog):
         # Executor filter combobox
         self.executor_filter = QComboBox()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x","Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
         for executor in executors:
             self.executor_filter.addItem(executor)
         self.executor_filter.currentIndexChanged.connect(self.update_portal_list)
@@ -2067,7 +2067,7 @@ class MultipleEditPortalDialog(QDialog):
         # Executor filter combobox
         self.executor_filter = QComboBox()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x","Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
         for executor in executors:
             self.executor_filter.addItem(executor)
         self.executor_filter.currentIndexChanged.connect(self.update_portal_list)
@@ -2116,7 +2116,7 @@ class MultipleEditPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of available executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x","Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
         self.executor_combo.insertItem(0, tr("DO_NOT_CHANGE"))
         self.executor_combo.setCurrentIndex(0)
         for executor in executors:
@@ -3016,8 +3016,7 @@ class ShortcutManager(QDialog):
 
         # Get values or use defaults
         menu_dir = shortcut_section.get("menu_dir") or str(
-            Path.home() / ".local" / "share" / "applications" / "Meganimus-menu-shortcuts"
-        )
+            Path.home() / ".local" / "share" / "applications")
 
         # Determine desktop dir from XDG user dirs
         desktop_dir = shortcut_section.get("desktop_dir")
@@ -3216,6 +3215,9 @@ class ShortcutManager(QDialog):
         for name, cb in self.checkbox_widgets["menu"].items():
             checked = cb.isChecked()
             self.handle_desktop_creation(name, checked, menu_dir)
+
+        os.system(f'chmod 777 "{menu_dir}/"portal-*.desktop')
+        os.system(f'chmod 777 "{desktop_dir}/"portal-*.desktop')
 
         QMessageBox.information(self, tr("APP_NAME"), tr("SHORTCUTS_SAVED"))
         self.update_list_view()
@@ -3807,7 +3809,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x","Ryubing"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Snes9x", "Ryubing"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
@@ -4490,7 +4492,7 @@ class SteamGridDBApp(QDialog):
             QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTALS"))
             return
 
-        # Invocations list
+        # Portals list
         portals = []
         for toml_file in config_dir.glob("portal-info-*.toml"):
             try:
@@ -5025,7 +5027,7 @@ if __name__ == "__main__":
         QLocalServer.removeServer("meganimus_single_instance")
         return False
 
-    # Create the single-instance server only if the option is NOT checked
+    # If another instance is already running, send the command to it and exit
     if is_instance_alive():
         if "--start-portal" in sys.argv:
             try:
