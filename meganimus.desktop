@@ -5,6 +5,6 @@ Icon=applications-all
 StartupWMClass=meganimus
 Comment=A launcher for native and emulator games
 Categories=Game;
-Keywords=gaming;emulator;portal
+Keywords=gaming;emulator;portal;
 Terminal=false
 Type=Application
