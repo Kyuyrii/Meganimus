@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.1"
+__version__ = "1.2"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -2878,6 +2878,9 @@ class ShortcutManager(QDialog):
         main_layout.addLayout(buttons_layout)
 
         self.update_list_view()
+        self.view_combo.setCurrentIndex(1)
+        self.update_list_view()
+        self.view_combo.setCurrentIndex(0)
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
@@ -2920,7 +2923,18 @@ class ShortcutManager(QDialog):
 
         # Current folder and existing desktops
         folder_path = Path(self.shortcut_manager_info.get(f"{self.current_view}_dir", ""))
-        existing_desktops = {f.stem[len("portal-"):] for f in folder_path.glob("*.desktop") if f.stem.startswith("portal-") and self.is_meganimus_desktop(f)} if folder_path.exists() else set()
+        existing_desktops = set()
+        
+        if folder_path.exists():
+            safe_to_display = {data["safe_portal_name"]: name 
+                              for name, data in self.portals.items() 
+                              if "safe_portal_name" in data}
+            
+            for f in folder_path.glob("portal-*.desktop"):
+                if self.is_meganimus_desktop(f):
+                    safe_name = f.stem.replace("portal-", "")
+                    if safe_name in safe_to_display:
+                        existing_desktops.add(safe_to_display[safe_name])
 
         # Clean up the old layout.
         while self.scroll_layout.count():
@@ -2958,8 +2972,9 @@ class ShortcutManager(QDialog):
                 data = toml.loads(content)
                 name = data.get("name")
                 gui_path = data.get("gui_path", "")
+                safe_portal_name = f.stem.replace("portal-info-", "")
                 if name:
-                    invs[name] = {"gui_path": gui_path}
+                    invs[name] = {"gui_path": gui_path, "safe_portal_name": safe_portal_name}
             except Exception:
                 continue
         return invs
@@ -3068,17 +3083,24 @@ class ShortcutManager(QDialog):
 
         # Update the checkboxes according to the new folder.
         folder_path = new_folder
-        existing_desktops = {f.stem[len("portal-"):] for f in folder_path.glob("*.desktop") if f.stem.startswith("portal-")} if folder_path.exists() else set()
+        existing_desktops = set()
+        
+        if folder_path.exists():
+            safe_to_display = {data["safe_portal_name"]: name 
+                              for name, data in self.portals.items() 
+                              if "safe_portal_name" in data}
+            
+            for f in folder_path.glob("portal-*.desktop"):
+                if self.is_meganimus_desktop(f):
+                    safe_name = f.stem.replace("portal-", "")
+                    if safe_name in safe_to_display:
+                        existing_desktops.add(safe_to_display[safe_name])
 
-        new_checkboxes = {}
-        for inv in sorted(self.portals.keys()):
-            cb = QCheckBox(inv)
-            cb.setChecked(inv in existing_desktops)
-            new_checkboxes[inv] = cb
+        # Update existing checkboxes
+        for name, cb in self.checkbox_widgets[view_key].items():
+            cb.setChecked(name in existing_desktops)
 
-        self.checkbox_widgets[view_key] = new_checkboxes
-
-        # Reapply the search bar filter.
+        # Reapply filter
         while self.scroll_layout.count():
             item = self.scroll_layout.takeAt(0)
             if item.widget():
@@ -3144,8 +3166,8 @@ class ShortcutManager(QDialog):
             checked = cb.isChecked()
             self.create_desktop_file(name, checked, menu_dir)
 
-        os.system(f'chmod 777 "{menu_dir}/"portal-*.desktop')
-        os.system(f'chmod 777 "{desktop_dir}/"portal-*.desktop')
+        os.system(f'chmod +x "{menu_dir}/"portal-*.desktop')
+        os.system(f'chmod +x "{desktop_dir}/"portal-*.desktop')
 
         QMessageBox.information(self, tr("APP_NAME"), tr("SHORTCUTS_SAVED"))
         self.update_list_view()
@@ -3155,7 +3177,10 @@ class ShortcutManager(QDialog):
         if not checked:
             return
 
-        desktop_file = folder / f"portal-{name}.desktop"
+        portal_data = self.portals.get(name, {})
+        safe_name = portal_data.get("safe_portal_name", "")
+
+        desktop_file = folder / f"portal-{safe_name}.desktop"
         current_meganimus = self.shortcut_manager_info.get("meganimus_command", "meganimus") + f' --start-portal "{name}"'
         gui_path = self.portals.get(name, {}).get("gui_path", "")
 
