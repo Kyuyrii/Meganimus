@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Meganimus
 Exec=meganimus
-Icon=applications-all
+Icon=meganimus
 StartupWMClass=meganimus
 Comment=A launcher for native and emulator games
 Comment[pt_BR]=Um launcher para jogos nativos e de emuladores
