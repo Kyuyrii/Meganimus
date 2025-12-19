@@ -2,7 +2,7 @@ language_name = "Español España"
 
 ABOUT_TEXT_HTML = """<b>Meganimus</b><br>
 Versión: {__version__}<br><br>
-Un lanzador para centralizar tus juegos nativos de Linux y de emuladores.<br>
+Un lanzador para juegos nativos y emuladores.<br>
 Licencia: <a href='https://www.gnu.org/licenses/gpl-3.0.html'>GPLv3</a><br>
 Creado por {__creator__}"""
 ABOUT_MEGANIMUS = "Acerca de Meganimus"

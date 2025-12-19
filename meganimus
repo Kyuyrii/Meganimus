@@ -32,14 +32,14 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.3"
+__version__ = "1.4"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
     'en_US': {
         "ABOUT_TEXT_HTML": """<b>Meganimus</b><br>
         Version: {__version__}<br><br>
-        A launcher to centralize your native Linux and emulator games.<br>
+        A launcher for native and emulator games.<br>
         License: <a href='https://www.gnu.org/licenses/gpl-3.0.html.en'>GPLv3</a><br>
         Created by {__creator__}""",
         "ABOUT_MEGANIMUS": "About Meganimus",
@@ -218,7 +218,7 @@ BUILTIN_TRANSLATIONS = {
     'pt_BR': {
         "ABOUT_TEXT_HTML": """<b>Meganimus</b><br>
         Versão: {__version__}<br><br>
-        Um launcher para centralizar seus jogos nativos de Linux e de emuladores.<br>
+        Um launcher para jogos nativos e de emuladores.<br>
         Licença: <a href='https://www.gnu.org/licenses/gpl-3.0.html'>GPLv3</a><br>
         Criado por {__creator__}""",
         "ABOUT_MEGANIMUS": "Sobre o Meganimus",
@@ -2862,6 +2862,7 @@ class ShortcutManager(QDialog):
         # Folder selection
         grid = QGridLayout()
         self.desktop_dir_input = QLineEdit(self.shortcut_manager_info.get("desktop_dir", ""))
+        self.desktop_dir_input.setReadOnly(True)
         desktop_browse = QPushButton(tr("BROWSE_BUTTON"))
         desktop_browse.clicked.connect(lambda: self.browse_folder(self.desktop_dir_input))
         grid.addWidget(QLabel(tr("DESKTOP_FOLDER")), 0, 0)
@@ -2869,6 +2870,7 @@ class ShortcutManager(QDialog):
         grid.addWidget(desktop_browse, 0, 2)
 
         self.menu_dir_input = QLineEdit(self.shortcut_manager_info.get("menu_dir", ""))
+        self.menu_dir_input.setReadOnly(True)
         menu_browse = QPushButton(tr("BROWSE_BUTTON"))
         menu_browse.clicked.connect(lambda: self.browse_folder(self.menu_dir_input))
         grid.addWidget(QLabel(tr("MENU_FOLDER")), 1, 0)
@@ -3001,10 +3003,8 @@ class ShortcutManager(QDialog):
         shortcut_section = settings.get("shortcut", {})
 
         # Get values or use defaults
-        menu_dir = shortcut_section.get("menu_dir") or str(
-            Path.home() / ".local" / "share" / "applications")
 
-        # Determine desktop dir from XDG user dirs
+        # Determine desktop_dir from XDG user dirs
         desktop_dir = shortcut_section.get("desktop_dir")
         if not desktop_dir:
             desktop_dir = Path.home() / "Desktop"  # fallback
@@ -3021,6 +3021,10 @@ class ShortcutManager(QDialog):
                                 break
                 except Exception:
                     pass
+
+        # Determine menu_dir
+        menu_dir = shortcut_section.get("menu_dir") or str(
+            Path.home() / ".local" / "share" / "applications")
 
         meganimus_command = shortcut_section.get("meganimus_command") or "meganimus"
 
@@ -3164,7 +3168,9 @@ class ShortcutManager(QDialog):
         menu_dir = Path(self.menu_dir_input.text().strip())
         desktop_dir = Path(self.desktop_dir_input.text().strip())
 
-        if not desktop_dir.exists():
+        try:
+            desktop_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
@@ -3172,7 +3178,9 @@ class ShortcutManager(QDialog):
             )
             return
 
-        if not menu_dir.exists():
+        try:
+            menu_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
