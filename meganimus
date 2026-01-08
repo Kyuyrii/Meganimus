@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.4"
+__version__ = "1.4.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -856,6 +856,7 @@ class SettingsDialog(QDialog):
             "RPCS3": {
                 "options": [
                     (tr("SELECT_VERSION"), "OFF"),
+                    ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
                     (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
                     (tr("CUSTOM_COMMAND"), "Custom"),
