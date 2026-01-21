@@ -17,10 +17,10 @@ import time
 import psutil
 import uuid
 import re
-import webbrowser
 import shlex
 import random
 from pathlib import Path
+from functools import partial
 
 # Translation System
 try:
@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.4.1"
+__version__ = "1.5"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -47,7 +47,7 @@ BUILTIN_TRANSLATIONS = {
         "ADD_FOLDER": "Add folder",
         "ALREADY_UPDATED": "You are on the latest version.",
         "ALL_PORTALS": "All portals",
-        "API_FAIL": "API error:\n{e}",
+        "API_FAIL": "API error:<br>{error}",
         "API_KEY_SAVE_FIRST": "Save your API KEY in the Meganimus settings first.",
         "APPIMAGE_AND_EXECUTABLE": "AppImage/Executable",
         "APP_NAME": "Meganimus",
@@ -103,8 +103,10 @@ BUILTIN_TRANSLATIONS = {
         "FAILED_UPDATE_TOML": "Could not update portal information: {error}",
         "FILE": "File",
         "FOLDER": "Folder",
+        "FPS_DXVK_HUD": "DXVK HUD (Only UMU)",
         "FPS_GALLIUM_HUD": "Gallium HUD (Not always compatible)",
         "GAMEMODE": "Use Feral gamemode",
+        "ICON_TOOLBAR_SIZE": "Button size",
         "ICON_WIDTH_CLASSIC": "Icon size (Classic)",
         "ICON_WIDTH_GRID": "Icon size (Grid)",
         "IMAGE_FILTER": "Image Files (*.jpg *.jpeg *.png *.webp);;All Files (*)",
@@ -137,9 +139,6 @@ BUILTIN_TRANSLATIONS = {
         "LAYOUT_MODE_CLASSIC": "Classic",
         "LAYOUT_MODE_GRID": "Grid",
         "LAYOUT_MODE_LIST": "List",
-        "LAYOUT_MODE_CLASSIC_BARE": "Classic (bare)",
-        "LAYOUT_MODE_GRID_BARE": "Grid (bare)",
-        "LAYOUT_MODE_LIST_BARE": "List (bare)",
         "LOAD_HEROES": "Load heroes",
         "LOAD_ICONS": "Load icons",
         "MANAGE_SHORTCUTS": "Manage shortcuts",
@@ -150,7 +149,6 @@ BUILTIN_TRANSLATIONS = {
         "MEGANIMUS_TRAY_TOGGLE": "Change visibility",
         "MENU_FOLDER": "Menu folder",
         "MODIFY_PORTAL": "Modify portal",
-        "MOVE_SHORTCUTS_CONFIRM": "Do you want to move shortcuts from \"{old}\" to \"{new}\"?",
         "MULTIPLE_PORTAL_EDITOR": "Multiple portal editor",
         "MULTIPLE_PORTAL_CREATOR": "Creator of multiple portals",
         "MULTIPLE_PORTAL_REMOVER": "Multiple portal remover",
@@ -183,6 +181,7 @@ BUILTIN_TRANSLATIONS = {
         "SELECT_ALL_IN_MULTIPLE_EDIT": "All",
         "SELECT_AT_LEAST_ONE_IMAGE": "Select at least one image.",
         "SELECT_FILE": "Select file",
+        "SELECT_FOLDER": "Select folder",
         "SELECT_GAME": "Select game",
         "SELECT_GAME_FOLDER": "Select game folder",
         "SELECT_PORTAL_ART": "Select art",
@@ -226,7 +225,7 @@ BUILTIN_TRANSLATIONS = {
         "ADD_FOLDER": "Adicionar pasta",
         "ALREADY_UPDATED": "Você está na versão mais recente.",
         "ALL_PORTALS": "Todos os portais",
-        "API_FAIL": "Erro de API:\n{e}",
+        "API_FAIL": "Erro de API:<br>{error}",
         "API_KEY_SAVE_FIRST": "Salve sua API KEY nas configurações do Meganimus primeiro.",
         "APPIMAGE_AND_EXECUTABLE": "AppImage/Executável",
         "APP_NAME": "Meganimus",
@@ -282,8 +281,10 @@ BUILTIN_TRANSLATIONS = {
         "FAILED_UPDATE_TOML": "Não foi possível atualizar as informações do portal: {error}",
         "FILE": "Arquivo",
         "FOLDER": "Pasta",
+        "FPS_DXVK_HUD": "DXVK HUD (Somente UMU)",
         "FPS_GALLIUM_HUD": "Gallium HUD (Nem sempre compatível)",
         "GAMEMODE": "Usar Feral gamemode",
+        "ICON_TOOLBAR_SIZE": "Tamanho dos botões",
         "ICON_WIDTH_CLASSIC": "Tamanho do ícone (Clássico)",
         "ICON_WIDTH_GRID": "Tamanho do ícone (Grade)",
         "IMAGE_FILTER": "Arquivos de imagem (*.jpg *.jpeg *.png *.webp);;Todos os arquivos (*)",
@@ -316,9 +317,6 @@ BUILTIN_TRANSLATIONS = {
         "LAYOUT_MODE_CLASSIC": "Clássico",
         "LAYOUT_MODE_GRID": "Grade",
         "LAYOUT_MODE_LIST": "Lista",
-        "LAYOUT_MODE_CLASSIC_BARE": "Clássico (bare)",
-        "LAYOUT_MODE_GRID_BARE": "Grade (bare)",
-        "LAYOUT_MODE_LIST_BARE": "Lista (bare)",
         "LOAD_HEROES": "Carregar heroes",
         "LOAD_ICONS": "Carregar ícones",
         "MANAGE_SHORTCUTS": "Gerenciar atalhos",
@@ -329,7 +327,6 @@ BUILTIN_TRANSLATIONS = {
         "MEGANIMUS_TRAY_TOGGLE": "Alterar visibilidade",
         "MENU_FOLDER": "Pasta menu",
         "MODIFY_PORTAL": "Modificar portal",
-        "MOVE_SHORTCUTS_CONFIRM": "Deseja mover os atalhos de \"{old}\" para \"{new}\"?",
         "MULTIPLE_PORTAL_EDITOR": "Editor de múltiplos portais",
         "MULTIPLE_PORTAL_CREATOR": "Criador de múltiplos portais",
         "MULTIPLE_PORTAL_REMOVER": "Removedor de múltiplos portais",
@@ -362,6 +359,7 @@ BUILTIN_TRANSLATIONS = {
         "SELECT_ALL_IN_MULTIPLE_EDIT": "Todos",
         "SELECT_AT_LEAST_ONE_IMAGE": "Selecione pelo menos uma imagem.",
         "SELECT_FILE": "Selecionar arquivo",
+        "SELECT_FOLDER": "Selecionar pasta",
         "SELECT_GAME": "Selecionar jogo",
         "SELECT_GAME_FOLDER": "Selecionar pasta do jogo",
         "SELECT_PORTAL_ART": "Selecionar arte",
@@ -396,19 +394,25 @@ BUILTIN_TRANSLATIONS = {
     }
 }
 
+# A Snap version of Meganimus isn't viable; it's only here to mimic the behavior of Zordeer.
+if os.environ.get("SNAP"):
+    meganimus_dir: Path = Path(os.environ["SNAP_REAL_HOME"]).joinpath("AppsFiles", "Meganimus")
+else:
+    meganimus_dir: Path = (Path.home() / "AppsFiles" / "Meganimus")
+home_dir = meganimus_dir.parent.parent
+
 # Loads translations from external TOML files.
 def load_external_translations():
     external_translations = {}
     supported_languages = {"English USA": "en_US", "Português Brasil": "pt_BR"}
-    
+
     # Translation folders
     translation_dirs = [
-        Path.home() / "AppsFiles" / "Meganimus" / "translation",
-        Path("/usr/share/Meganimus/translation"),
-        Path(__file__).parent / "translation",
-        Path(sys.argv[0]).parent / "translation"
+        Path(sys.argv[0]).parent / "translation",
+        meganimus_dir / "translation",
+        Path("/usr/share/Meganimus/translation")
     ]
-    
+
     for translation_folder in translation_dirs:
         if translation_folder.exists():
             for toml_file in translation_folder.glob("meganimus-translation-*.toml"):
@@ -416,19 +420,19 @@ def load_external_translations():
                     lang_code = toml_file.stem.replace("meganimus-translation-", "")
                     with open(toml_file, 'r', encoding='utf-8') as f:
                         lang_data = toml.load(f)
-                    
+
                     # Add to translations
                     external_translations[lang_code] = lang_data
-                    
+
                     # Adds to supported languages
                     lang_name = lang_data.get("language_name", lang_code)
                     supported_languages[lang_name] = lang_code
-                    
+
                     print(f"Loaded translation: {lang_name} ({lang_code})")
-                    
+
                 except Exception as e:
                     print(f"Error loading translation {toml_file}: {e}")
-    
+
     return external_translations, supported_languages
 
 # Load external translations
@@ -438,34 +442,36 @@ EXTERNAL_TRANSLATIONS, SUPPORTED_LANGUAGES = load_external_translations()
 def tr(key, **kwargs):
     # Get the translated string (from external or embedded translations)
     translated_string = None
-    
+
     if LANG in EXTERNAL_TRANSLATIONS:
         translation_dict = EXTERNAL_TRANSLATIONS[LANG]
         translated_string = translation_dict.get(key)
-    
+
     # Fallback to embedded translations if not found in external
     if not translated_string:
         translation_dict = BUILTIN_TRANSLATIONS.get(LANG, BUILTIN_TRANSLATIONS['en_US'])
         translated_string = translation_dict.get(key, BUILTIN_TRANSLATIONS['en_US'].get(key, key))
-    
+
     # If we have a translated string, process special variables and formatting
     if translated_string:
         # Replace special variables
         translated_string = translated_string.replace("{__version__}", __version__)
         translated_string = translated_string.replace("{__creator__}", __creator__)
-        
+
         # Apply formatting with any additional kwargs
         try:
             return translated_string.format(**kwargs)
         except KeyError:
             return translated_string
-    
+
     # If no translation found, return the key itself
     return key
 
 # PyQt6 Imports
 try:
-    from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QToolBar, QDialog, QGridLayout, QLabel, QLineEdit, QHBoxLayout, QFileDialog, QComboBox, QCheckBox, QListWidgetItem, QStyleFactory, QProgressBar, QButtonGroup, QSplitter, QScrollArea, QRadioButton, QAbstractItemView, QFormLayout, QTreeWidget, QTreeWidgetItem, QSystemTrayIcon, QMenu, QListView, QSpinBox, QTextEdit)
+    from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QToolBar, QDialog, QGridLayout,
+    QLabel, QLineEdit, QHBoxLayout, QFileDialog, QComboBox, QCheckBox, QListWidgetItem, QStyleFactory, QProgressBar, QButtonGroup,
+    QSplitter, QScrollArea, QRadioButton, QAbstractItemView, QFormLayout, QTreeWidget, QTreeWidgetItem, QSystemTrayIcon, QMenu, QListView, QSpinBox, QTextEdit)
     from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer, QEvent, QTranslator, QLibraryInfo
     from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QPalette, QColor, QTextCharFormat, QTextCursor
     from PyQt6.QtNetwork import QLocalServer, QLocalSocket
@@ -474,10 +480,45 @@ except ImportError:
     print(tr("NO_PYQT6_FOUND_ERROR"))
     sys.exit(1)
 
+PORTAL_LOCALE_OPTIONS = [
+    'English USA (en_US.UTF-8)',
+    'Português Brasil (pt_BR.UTF-8)',
+    'Português Portugal (pt_PT.UTF-8)',
+    'Español España (es_ES.UTF-8)',
+    'Español México (es_MX.UTF-8)',
+    'Français (fr_FR.UTF-8)',
+    'Deutsch (de_DE.UTF-8)',
+    'Italiano (it_IT.UTF-8)',
+    'Русский (ru_RU.UTF-8)',
+    'Українська (uk_UA.UTF-8)',
+    'Polski (pl_PL.UTF-8)',
+    'Česky (cs_CZ.UTF-8)',
+    'Slovenčina (sk_SK.UTF-8)',
+    'Magyar (hu_HU.UTF-8)',
+    'Română (ro_RO.UTF-8)',
+    'Nederlands (nl_NL.UTF-8)',
+    'Svenska (sv_SE.UTF-8)',
+    'Norsk Bokmål (nb_NO.UTF-8)',
+    'Dansk (da_DK.UTF-8)',
+    'Suomi (fi_FI.UTF-8)',
+    'Ελληνικά (el_GR.UTF-8)',
+    'Български (bg_BG.UTF-8)',
+    '日本語 (ja_JP.UTF-8)',
+    '한국어 (ko_KR.UTF-8)',
+    '简体中文 (zh_CN.UTF-8)',
+    '繁體中文 (zh_TW.UTF-8)',
+    'العربية (ar_SA.UTF-8)',
+    'فارسی (fa_IR.UTF-8)',
+    'Türkçe (tr_TR.UTF-8)',
+    'हिन्दी (hi_IN.UTF-8)',
+    'ไทย (th_TH.UTF-8)',
+    'עברית (he_IL.UTF-8)',
+]
+
 # Meganimus settings (TOML)
 # $HOME/AppsFiles/Meganimus/config/meganimus-settings.toml
-CONFIG_DIR = Path.home() / "AppsFiles" / "Meganimus" / "config"
-SETTINGS_PATH = CONFIG_DIR / "meganimus-settings.toml"
+meganimus_config_dir = meganimus_dir / "config"
+meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
 
 def detect_default_settings() -> dict:
     """Provides default settings for first-time creation."""
@@ -488,9 +529,11 @@ def detect_default_settings() -> dict:
             "layout_mode": "classic",
             "icon_width_classic": 420,
             "icon_width_grid": 300,
-            "toolbar_position": "bottom",
+            "toolbar_icon_size": 32,
+            "toolbar_position": "top",
             "search_bar_visible": False,
             "executor_filter_index": 0,
+            "toolbar_visible": True,
         },
         "window": {
             "isMaximized": "",
@@ -525,6 +568,9 @@ def detect_default_settings() -> dict:
             "eden_executor": "OFF",
             "eden_command": "",
             "eden_executor_args": "",
+            "flycast_executor": "OFF",
+            "flycast_command": "",
+            "flycast_executor_args": "",
             "melonds_executor": "OFF",
             "melonds_command": "",
             "melonds_executor_args": "",
@@ -540,12 +586,15 @@ def detect_default_settings() -> dict:
             "rpcs3_executor": "OFF",
             "rpcs3_command": "",
             "rpcs3_executor_args": "",
-            "snes9x_executor": "OFF",
-            "snes9x_command": "",
-            "snes9x_executor_args": "",
             "ryubing_executor": "OFF",
             "ryubing_command": "",
             "ryubing_executor_args": "",
+            "snes9x_executor": "OFF",
+            "snes9x_command": "",
+            "snes9x_executor_args": "",
+            "umu_executor": "OFF",
+            "umu_command": "",
+            "umu_executor_args": "",
         }
     }
 
@@ -554,7 +603,7 @@ def load_settings() -> dict:
     defaults = detect_default_settings()
 
     try:
-        with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+        with open(meganimus_settings_file, "r", encoding="utf-8") as f:
             data = toml.load(f)
     except Exception:
         # First creation: save default settings
@@ -591,8 +640,7 @@ def load_settings() -> dict:
 
 def save_settings(data: dict) -> None:
     """Saves settings in TOML."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
+    with open(meganimus_settings_file, "w", encoding="utf-8") as f:
         toml.dump(data, f)
 
 class SettingsDialog(QDialog):
@@ -634,14 +682,11 @@ class SettingsDialog(QDialog):
         self.layout_mode_combo = QComboBox()
         self.layout_mode_combo.addItems([
             tr("LAYOUT_MODE_CLASSIC"),
-            tr("LAYOUT_MODE_CLASSIC_BARE"),
             tr("LAYOUT_MODE_GRID"),
-            tr("LAYOUT_MODE_GRID_BARE"),
             tr("LAYOUT_MODE_LIST"),
-            tr("LAYOUT_MODE_LIST_BARE")
         ])
         saved_layout_mode = self.settings["design"].get("layout_mode", "classic")
-        index_map = {"classic": 0, "classic-bare": 1, "grid": 2, "grid-bare": 3, "list": 4, "list-bare": 5}
+        index_map = {"classic": 0, "grid": 1, "list": 2}
         self.layout_mode_combo.setCurrentIndex(index_map.get(saved_layout_mode, 0))
         top_layout.addRow(layout_mode_label, self.layout_mode_combo)
 
@@ -659,6 +704,13 @@ class SettingsDialog(QDialog):
         self.grid_width_input.setValue(self.settings["design"].get("icon_width_grid", 300))
         top_layout.addRow(grid_label, self.grid_width_input)
 
+        # Toolbar icon size
+        toolbar_icon_size_label = QLabel(tr("ICON_TOOLBAR_SIZE"))
+        self.toolbar_icon_size_input = QSpinBox()
+        self.toolbar_icon_size_input.setRange(16, 128)
+        self.toolbar_icon_size_input.setValue(self.settings["design"].get("toolbar_icon_size", 32))
+        top_layout.addRow(toolbar_icon_size_label, self.toolbar_icon_size_input)
+
         # SGDB API Key
         self.api_input = QLineEdit()
         self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
@@ -672,7 +724,7 @@ class SettingsDialog(QDialog):
         # Executors section
         executors_label = QLabel(tr("EXECUTORS"))
         self.executor_filter = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
         self.executor_filter.addItems(executors)
 
         top_layout.addRow(executors_label, self.executor_filter)
@@ -777,6 +829,25 @@ class SettingsDialog(QDialog):
                     "Custom": ""
                 }
             },
+            "Flycast": {
+                "options": [
+                    (tr("SELECT_VERSION"), "OFF"),
+                    ("Snap", "Snap"),
+                    ("Flatpak", "Flatpak"),
+                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
+                    (tr("CUSTOM_COMMAND"), "Custom"),
+                ],
+                "default_command": {
+                    "Snap": "snap run flycast-emulator",
+                    "Flatpak": "flatpak run org.flycast.Flycast",
+                },
+                "default_args": {
+                    "Snap": "",
+                    "Flatpak": "",
+                    "AppImage": "",
+                    "Custom": ""
+                }
+            },
             "MelonDS": {
                 "options": [
                     (tr("SELECT_VERSION"), "OFF"),
@@ -872,6 +943,25 @@ class SettingsDialog(QDialog):
                     "Custom": ""
                 }
             },
+            "Ryubing": {
+                "options": [
+                    (tr("SELECT_VERSION"), "OFF"),
+                    ("Snap", "Snap"),
+                    ("Flatpak", "Flatpak"),
+                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
+                    (tr("CUSTOM_COMMAND"), "Custom"),
+                ],
+                "default_command": {
+                    "Snap": "snap run ryubing-emulator",
+                    "Flatpak": "flatpak run io.github.ryubing.Ryujinx",
+                },
+                "default_args": {
+                    "Snap": "-f",
+                    "Flatpak": "-f",
+                    "AppImage": "-f",
+                    "Custom": ""
+                }
+            },
             "Snes9x": {
                 "options": [
                     (tr("SELECT_VERSION"), "OFF"),
@@ -891,7 +981,7 @@ class SettingsDialog(QDialog):
                     "Custom": ""
                 }
             },
-            "Ryubing": {
+            "UMU": {
                 "options": [
                     (tr("SELECT_VERSION"), "OFF"),
                     ("Snap", "Snap"),
@@ -900,13 +990,13 @@ class SettingsDialog(QDialog):
                     (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
-                    "Snap": "snap run ryubing-emulator",
-                    "Flatpak": "flatpak run io.github.ryubing.Ryujinx",
+                    "Snap": "snap run umu-run",
+                    "Flatpak": "flatpak run org.openwinecomponents.umu.umu-launcher",
                 },
                 "default_args": {
-                    "Snap": "-f",
-                    "Flatpak": "-f",
-                    "AppImage": "-f",
+                    "Snap": "",
+                    "Flatpak": "",
+                    "AppImage": "",
                     "Custom": ""
                 }
             },
@@ -968,22 +1058,22 @@ class SettingsDialog(QDialog):
 
             # Connects signals
             combo.currentIndexChanged.connect(
-                lambda i, r=executor_name, c=combo: self.update_executor_command(r, c.itemData(i)))
-            start_btn.clicked.connect(lambda _, r=executor_name: self.start_executor_via_meganimus(r))
-            browse_btn.clicked.connect(lambda _, r=executor_name: self.browse_executor(r))
+                partial(self._on_combo_changed, executor_name, combo))
+            start_btn.clicked.connect(partial(self.start_executor_via_meganimus, executor_name))
+            browse_btn.clicked.connect(partial(self.browse_executor, executor_name))
 
             # Initializes saved values
             saved_executor = self.settings["executor"].get(f"{executor_name.lower()}_executor", "OFF")
             saved_command = self.settings["executor"].get(f"{executor_name.lower()}_command", "")
-            
+
             index = next((i for i in range(combo.count()) if combo.itemData(i) == saved_executor), 0)
             combo.setCurrentIndex(index)
             self.update_executor_command(executor_name, combo.itemData(index))
-            
+
             widgets = self.executor_widgets[executor_name]
             default_args = self.executors_config[executor_name].get("default_args", {})
             saved_args = self.settings["executor"].get(f"{executor_name.lower()}_executor_args", "")
-            
+
             if combo.itemData(index) in default_args and not saved_args:
                 widgets["args_input"].setText(default_args[combo.itemData(index)])
             else:
@@ -995,6 +1085,9 @@ class SettingsDialog(QDialog):
         save_btn = QPushButton(tr("SAVE_BUTTON"))
         save_btn.clicked.connect(self.save_and_close)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
+
+    def _on_combo_changed(self, executor_name, combo, index):
+        self.update_executor_command(executor_name, combo.itemData(index))
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
@@ -1071,12 +1164,14 @@ class SettingsDialog(QDialog):
         self.settings["design"]["qt_style"] = self.style_combo.currentText()
         selected_index = self.lang_combo.currentIndex()
         self.settings["design"]["language"] = list(SUPPORTED_LANGUAGES.values())[selected_index]
-        self.settings["design"]["layout_mode"] = ["classic", "classic-bare", "grid", "grid-bare", "list", "list-bare"][self.layout_mode_combo.currentIndex()]
+        self.settings["design"]["layout_mode"] = ["classic", "grid", "list"][self.layout_mode_combo.currentIndex()]
         self.settings["other"]["sgdb_apikey"] = self.api_input.text().strip()
 
         # Save the icon widths
         self.settings["design"]["icon_width_classic"] = self.classic_width_input.value()
         self.settings["design"]["icon_width_grid"] = self.grid_width_input.value()
+
+        self.settings["design"]["toolbar_icon_size"] = self.toolbar_icon_size_input.value()
 
         # Save all executors dynamically
         for executor_name, widgets in self.executor_widgets.items():
@@ -1118,7 +1213,7 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
 
@@ -1172,41 +1267,7 @@ class AddPortalDialog(QDialog):
         # Language/location
         self.language_label = QLabel(tr("PORTAL_LANGUAGE"))
         self.language_input = QComboBox()
-        self.language_input.addItems([
-            tr("PLACEHOLDER_FOR_LANGUAGE"),
-            'English USA (en_US.UTF-8)',
-            'Português Brasil (pt_BR.UTF-8)',
-            'Português Portugal (pt_PT.UTF-8)',
-            'Español España (es_ES.UTF-8)',
-            'Español México (es_MX.UTF-8)',
-            'Français (fr_FR.UTF-8)',
-            'Deutsch (de_DE.UTF-8)',
-            'Italiano (it_IT.UTF-8)',
-            'Русский (ru_RU.UTF-8)',
-            'Українська (uk_UA.UTF-8)',
-            'Polski (pl_PL.UTF-8)',
-            'Česky (cs_CZ.UTF-8)',
-            'Slovenčina (sk_SK.UTF-8)',
-            'Magyar (hu_HU.UTF-8)',
-            'Română (ro_RO.UTF-8)',
-            'Nederlands (nl_NL.UTF-8)',
-            'Svenska (sv_SE.UTF-8)',
-            'Norsk Bokmål (nb_NO.UTF-8)',
-            'Dansk (da_DK.UTF-8)',
-            'Suomi (fi_FI.UTF-8)',
-            'Ελληνικά (el_GR.UTF-8)',
-            'Български (bg_BG.UTF-8)',
-            '日本語 (ja_JP.UTF-8)',
-            '한국어 (ko_KR.UTF-8)',
-            '简体中文 (zh_CN.UTF-8)',
-            '繁體中文 (zh_TW.UTF-8)',
-            'العربية (ar_SA.UTF-8)',
-            'فارسی (fa_IR.UTF-8)',
-            'Türkçe (tr_TR.UTF-8)',
-            'हिन्दी (hi_IN.UTF-8)',
-            'ไทย (th_TH.UTF-8)',
-            'עברית (he_IL.UTF-8)',
-        ])
+        self.language_input.addItems([tr("PLACEHOLDER_FOR_LANGUAGE")] + PORTAL_LOCALE_OPTIONS)
         self.main_layout.addWidget(self.language_label, 5, 0)
         self.main_layout.addWidget(self.language_input, 5, 1, 1, 2)
 
@@ -1220,13 +1281,11 @@ class AddPortalDialog(QDialog):
         self.show_fps_checkbox = QCheckBox(tr("SHOW_FPS_OPTION"))
         self.show_fps_checkbox.setChecked(False)
         self.fps_hud_combo = QComboBox()
-        self.fps_hud_options = [
-            ("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")),
-        ]
+        self.fps_hud_options = [("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")), ("FPS_DXVK_HUD", tr("FPS_DXVK_HUD"))]
         for id, text in self.fps_hud_options:
             self.fps_hud_combo.addItem(text, id)
         self.fps_hud_combo.setEnabled(False)
-        
+
         self.show_fps_checkbox.stateChanged.connect(self.update_fps_hud_state)
         self.fps_layout.addWidget(self.show_fps_checkbox)
         self.fps_layout.addWidget(self.fps_hud_combo)
@@ -1375,15 +1434,13 @@ class AddPortalDialog(QDialog):
     def save_and_accept(self):
         portal_data = self.get_form_data()
         if portal_data["name"] and portal_data["game_path"]:
-            config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
-            art_dir = Path.home() / "AppsFiles" / "Meganimus" / "art"
-            gui_dir = Path.home() / "AppsFiles" / "Meganimus" / "art" / "gui"
-            config_dir.mkdir(parents=True, exist_ok=True)
+            art_dir = meganimus_dir / "art"
+            gui_dir = meganimus_dir / "art" / "gui"
             art_dir.mkdir(parents=True, exist_ok=True)
             gui_dir.mkdir(parents=True, exist_ok=True)
 
             safe_portal_name = portal_data["name"].replace(" ", "_").lower()
-            portal_file = config_dir / f"portal-info-{safe_portal_name}.toml"
+            portal_file = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
 
             # Check for duplicate portal name
             if portal_file.exists() and (not self.portal_data or self.portal_data.get("name", "").lower() != portal_data["name"].lower()):
@@ -1405,7 +1462,7 @@ class AddPortalDialog(QDialog):
                                     old_file.unlink()
                                 except Exception:
                                     pass
-                    
+
                     # Copy new image only if it's not already in the art_dir
                     if art_path.parent != art_dir:
                         art_extension = art_path.suffix.lower()
@@ -1451,7 +1508,7 @@ class AddPortalDialog(QDialog):
                                     old_file.unlink()
                                 except Exception:
                                     pass
-                    
+
                     # Copy new image only if it's not already in the gui_dir
                     if gui_path.parent != gui_dir:
                         gui_extension = gui_path.suffix.lower()
@@ -1495,7 +1552,7 @@ class AddPortalDialog(QDialog):
                 old_safe_portal_name = self.portal_data.get('name', '').replace(" ", "_").lower()
                 new_safe_portal_name = portal_data['name'].replace(" ", "_").lower()
                 if old_safe_portal_name != new_safe_portal_name:
-                    old_portal_file_path = config_dir / f"portal-info-{old_safe_portal_name}.toml"
+                    old_portal_file_path = meganimus_config_dir / f"portal-info-{old_safe_portal_name}.toml"
                     if old_portal_file_path.exists():
                         old_portal_file_path.unlink()
 
@@ -1517,9 +1574,8 @@ class AddPortalDialog(QDialog):
         if msg.exec() != QMessageBox.StandardButton.Yes:
             return
 
-        config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
         safe_portal_name = portal_name.replace(" ", "_").lower()
-        portal_file = config_dir / f"portal-info-{safe_portal_name}.toml"
+        portal_file = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
 
         if not portal_file.exists():
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR"))
@@ -1571,8 +1627,7 @@ class MultipleCreatePortalsDialog(QDialog):
         # Executor and combobox
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = [
-            "AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
         top_grid.addWidget(executor_label, 0, 0)
@@ -1581,41 +1636,7 @@ class MultipleCreatePortalsDialog(QDialog):
         # Language and combobox
         language_label = QLabel(tr("PORTAL_LANGUAGE"))
         self.language_input = QComboBox()
-        self.language_input.addItems([
-            tr("PLACEHOLDER_FOR_LANGUAGE"),
-            'English USA (en_US.UTF-8)',
-            'Português Brasil (pt_BR.UTF-8)',
-            'Português Portugal (pt_PT.UTF-8)',
-            'Español España (es_ES.UTF-8)',
-            'Español México (es_MX.UTF-8)',
-            'Français (fr_FR.UTF-8)',
-            'Deutsch (de_DE.UTF-8)',
-            'Italiano (it_IT.UTF-8)',
-            'Русский (ru_RU.UTF-8)',
-            'Українська (uk_UA.UTF-8)',
-            'Polski (pl_PL.UTF-8)',
-            'Česky (cs_CZ.UTF-8)',
-            'Slovenčina (sk_SK.UTF-8)',
-            'Magyar (hu_HU.UTF-8)',
-            'Română (ro_RO.UTF-8)',
-            'Nederlands (nl_NL.UTF-8)',
-            'Svenska (sv_SE.UTF-8)',
-            'Norsk Bokmål (nb_NO.UTF-8)',
-            'Dansk (da_DK.UTF-8)',
-            'Suomi (fi_FI.UTF-8)',
-            'Ελληνικά (el_GR.UTF-8)',
-            'Български (bg_BG.UTF-8)',
-            '日本語 (ja_JP.UTF-8)',
-            '한국어 (ko_KR.UTF-8)',
-            '简体中文 (zh_CN.UTF-8)',
-            '繁體中文 (zh_TW.UTF-8)',
-            'العربية (ar_SA.UTF-8)',
-            'فارسی (fa_IR.UTF-8)',
-            'Türkçe (tr_TR.UTF-8)',
-            'हिन्दी (hi_IN.UTF-8)',
-            'ไทย (th_TH.UTF-8)',
-            'עברית (he_IL.UTF-8)',
-        ])
+        self.language_input.addItems([tr("PLACEHOLDER_FOR_LANGUAGE")] + PORTAL_LOCALE_OPTIONS)
         top_grid.addWidget(language_label, 1, 0)
         top_grid.addWidget(self.language_input, 1, 1)
 
@@ -1706,11 +1727,12 @@ class MultipleCreatePortalsDialog(QDialog):
         fps_hud_combo = QComboBox()
         fps_hud_options = [
             ("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")),
+            ("FPS_DXVK_HUD", tr("FPS_DXVK_HUD"))
         ]
         for id, text in fps_hud_options:
             fps_hud_combo.addItem(text, id)
         fps_hud_combo.setEnabled(False)
-        show_fps_cb.stateChanged.connect(lambda s, combo=fps_hud_combo: combo.setEnabled(s))
+        show_fps_cb.stateChanged.connect(partial(fps_hud_combo.setEnabled))
         fps_layout.addWidget(show_fps_cb)
         fps_layout.addWidget(fps_hud_combo)
         layout.addLayout(fps_layout)
@@ -1737,10 +1759,8 @@ class MultipleCreatePortalsDialog(QDialog):
             QMessageBox.warning(self, tr("CREATE_PORTAL"), tr("MANDATORY_FIELDS_ERROR"))
             return
 
-        config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
-        art_dir = Path.home() / "AppsFiles" / "Meganimus" / "art"
-        gui_dir = Path.home() / "AppsFiles" / "Meganimus" / "art"/ "gui"
-        config_dir.mkdir(parents=True, exist_ok=True)
+        art_dir = meganimus_dir / "art"
+        gui_dir = meganimus_dir / "art"/ "gui"
         art_dir.mkdir(parents=True, exist_ok=True)
         gui_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1768,7 +1788,7 @@ class MultipleCreatePortalsDialog(QDialog):
             existing_names.add(safe_portal_name)
 
             # Duplicate in filesystem
-            test_path = config_dir / f"portal-info-{safe_portal_name}.toml"
+            test_path = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
             if test_path.exists():
                 QMessageBox.warning(
                     self,
@@ -1798,7 +1818,7 @@ class MultipleCreatePortalsDialog(QDialog):
             item = self.file_list.topLevelItem(i)
             name = item.name_input.text().strip()
             safe_portal_name = name.replace(" ", "_").lower()
-            file_path = config_dir / f"portal-info-{safe_portal_name}.toml"
+            file_path = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
 
             # Save TOML
             try:
@@ -1824,10 +1844,8 @@ class MultipleCreatePortalsDialog(QDialog):
         self.accept()
 
     def save_portal_data(self, data):
-        config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
-        config_dir.mkdir(parents=True, exist_ok=True)
         safe_portal_name = data["name"].replace(" ", "_").lower()
-        file_path = config_dir / f"portal-info-{safe_portal_name}.toml"
+        file_path = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
         if file_path.exists():
             return
         with open(file_path, 'w', encoding="utf-8") as f:
@@ -1850,10 +1868,6 @@ class MultipleRemovePortalDialog(QDialog):
 
         # Executor filter combobox
         self.executor_filter = QComboBox()
-        self.executor_filter.addItem(tr("ALL_PORTALS"))
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
-        for executor in executors:
-            self.executor_filter.addItem(executor)
         self.executor_filter.currentIndexChanged.connect(self.update_portal_list)
         main_layout.addWidget(self.executor_filter)
 
@@ -1895,7 +1909,6 @@ class MultipleRemovePortalDialog(QDialog):
 
     def load_portals(self):
         """It loads all the portals and creates the checkboxes."""
-        config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
         self.portal_checkboxes.clear()
         while self.scroll_layout.count():
             item = self.scroll_layout.takeAt(0)
@@ -1903,7 +1916,11 @@ class MultipleRemovePortalDialog(QDialog):
             if widget:
                 widget.deleteLater()
 
-        portal_files = sorted(config_dir.glob("portal-info-*.toml"), key=lambda p: p.stem.lower())
+        portal_files = sorted(meganimus_config_dir.glob("portal-info-*.toml"))
+        
+        # Executors used
+        used_executors = set()
+        
         for portal_file in portal_files:
             try:
                 with open(portal_file, encoding="utf-8") as f:
@@ -1911,14 +1928,27 @@ class MultipleRemovePortalDialog(QDialog):
                 name = data.get("name", portal_file.stem)
                 cb = QCheckBox(name)
                 cb.portal_file = portal_file
-                cb.executor = data.get("executor", "Linux")
+                executor = data.get("executor", "Linux")
+                cb.executor = executor
                 cb.art_path = data.get("art_path")
                 cb.gui_path = data.get("gui_path")
                 self.scroll_layout.addWidget(cb)
                 self.portal_checkboxes[name] = cb
+                
+                # Adds used executors to the list.
+                used_executors.add(executor)
+                
             except Exception:
                 continue
         self.scroll_layout.addStretch()
+        
+        # Add the used executors to the combobox.
+        self.executor_filter.clear()
+        self.executor_filter.addItem(tr("ALL_PORTALS"))
+        
+        # Add executors in alphabetical order.
+        for executor in sorted(used_executors):
+            self.executor_filter.addItem(executor)
 
     def update_portal_list(self):
         """Filter the portals by the selected text and executor."""
@@ -2013,10 +2043,6 @@ class MultipleEditPortalDialog(QDialog):
 
         # Executor filter combobox
         self.executor_filter = QComboBox()
-        self.executor_filter.addItem(tr("ALL_PORTALS"))
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
-        for executor in executors:
-            self.executor_filter.addItem(executor)
         self.executor_filter.currentIndexChanged.connect(self.update_portal_list)
         left_layout.addWidget(self.executor_filter)
 
@@ -2059,11 +2085,11 @@ class MultipleEditPortalDialog(QDialog):
         row = 0
 
         # Executor
-        self.executor_label = QLabel(tr("EXECUTOR_VERSION"))
+        self.executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
 
         # List of available executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
         self.executor_combo.insertItem(0, tr("DO_NOT_CHANGE"))
         self.executor_combo.setCurrentIndex(0)
         for executor in executors:
@@ -2105,43 +2131,10 @@ class MultipleEditPortalDialog(QDialog):
         # Language
         self.lang_label = QLabel(tr("PORTAL_LANGUAGE"))
         self.lang_combo = QComboBox()
-        self.lang_combo.addItem(tr("PLACEHOLDER_FOR_LANGUAGE"))
-        for lang in [
-            'English USA (en_US.UTF-8)',
-            'Português Brasil (pt_BR.UTF-8)',
-            'Português Portugal (pt_PT.UTF-8)',
-            'Español España (es_ES.UTF-8)',
-            'Español México (es_MX.UTF-8)',
-            'Français (fr_FR.UTF-8)',
-            'Deutsch (de_DE.UTF-8)',
-            'Italiano (it_IT.UTF-8)',
-            'Русский (ru_RU.UTF-8)',
-            'Українська (uk_UA.UTF-8)',
-            'Polski (pl_PL.UTF-8)',
-            'Česky (cs_CZ.UTF-8)',
-            'Slovenčina (sk_SK.UTF-8)',
-            'Magyar (hu_HU.UTF-8)',
-            'Română (ro_RO.UTF-8)',
-            'Nederlands (nl_NL.UTF-8)',
-            'Svenska (sv_SE.UTF-8)',
-            'Norsk Bokmål (nb_NO.UTF-8)',
-            'Dansk (da_DK.UTF-8)',
-            'Suomi (fi_FI.UTF-8)',
-            'Ελληνικά (el_GR.UTF-8)',
-            'Български (bg_BG.UTF-8)',
-            '日本語 (ja_JP.UTF-8)',
-            '한국어 (ko_KR.UTF-8)',
-            '简体中文 (zh_CN.UTF-8)',
-            '繁體中文 (zh_TW.UTF-8)',
-            'العربية (ar_SA.UTF-8)',
-            'فارسی (fa_IR.UTF-8)',
-            'Türkçe (tr_TR.UTF-8)',
-            'हिन्दी (hi_IN.UTF-8)',
-            'ไทย (th_TH.UTF-8)',
-            'עברית (he_IL.UTF-8)',
-        ]:
-            self.lang_combo.addItem(lang)
-        self.lang_combo.insertItem(0, tr("DO_NOT_CHANGE"))
+        self.lang_combo.addItems([
+            tr("DO_NOT_CHANGE"),
+            tr("PLACEHOLDER_FOR_LANGUAGE")
+        ] + PORTAL_LOCALE_OPTIONS)
         self.lang_combo.setCurrentIndex(0)
         right_layout.addWidget(self.lang_label, row, 0)
         right_layout.addWidget(self.lang_combo, row, 1, 1, 2)
@@ -2158,7 +2151,7 @@ class MultipleEditPortalDialog(QDialog):
         self.show_fps_checkbox.setTristate(True)
         self.show_fps_checkbox.setCheckState(Qt.CheckState.PartiallyChecked)
         self.fps_hud_combo = QComboBox()
-        self.fps_hud_options = [("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD"))]
+        self.fps_hud_options = [("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")), ("FPS_DXVK_HUD", tr("FPS_DXVK_HUD"))]
         for id, text in self.fps_hud_options:
             self.fps_hud_combo.addItem(text, id)
         self.fps_hud_combo.setEnabled(False)
@@ -2229,7 +2222,7 @@ class MultipleEditPortalDialog(QDialog):
             return
 
         self.portal_info_viewer = PortalInfoViewerDialog(self.parent_ref.meganimus_dir, self, multiple_edit_dialog=self)
-        self.portal_info_viewer.finished.connect(lambda _: setattr(self, "portal_info_viewer", None))
+        self.portal_info_viewer.finished.connect(partial(setattr, self, "portal_info_viewer", None))
         self.portal_info_viewer.show()
 
     def update_portal_list(self):
@@ -2285,7 +2278,7 @@ class MultipleEditPortalDialog(QDialog):
             self.game_input.setText(file_path)
 
     def select_portal_art(self):
-        heroes_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "heroes"
+        heroes_dir = meganimus_dir / "sgdb" / "heroes"
         heroes_dir.mkdir(parents=True, exist_ok=True)
 
         file_path, _ = QFileDialog.getOpenFileName(
@@ -2298,7 +2291,7 @@ class MultipleEditPortalDialog(QDialog):
             self.art_input.setText(file_path)
 
     def select_portal_gui(self):
-        icons_dir = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "icons"
+        icons_dir = meganimus_dir / "sgdb" / "icons"
         icons_dir.mkdir(parents=True, exist_ok=True)
 
         file_path, _ = QFileDialog.getOpenFileName(
@@ -2310,15 +2303,37 @@ class MultipleEditPortalDialog(QDialog):
         if file_path:
             self.gui_input.setText(file_path)
 
+    def update_executor_filter(self):
+        """Updates the available executors in the filter based on the portal-info files."""
+        executors = set()
+        for cb in self.portal_checkboxes.values():
+            try:
+                with open(cb.portal_file, encoding="utf-8") as f:
+                    data = toml.load(f)
+                executor = data.get("executor", "Linux")
+                executors.add(executor)
+            except Exception:
+                continue
+
+        current = self.executor_filter.currentText()
+        self.executor_filter.blockSignals(True)
+        self.executor_filter.clear()
+        self.executor_filter.addItem(tr("ALL_PORTALS"))
+        for executor in sorted(executors):
+            self.executor_filter.addItem(executor)
+        index = self.executor_filter.findText(current)
+        if index != -1:
+            self.executor_filter.setCurrentIndex(index)
+        self.executor_filter.blockSignals(False)
+
     def load_portals(self):
-        config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
         self.portal_checkboxes.clear()
         while self.scroll_layout.count():
             item = self.scroll_layout.takeAt(0)
             widget = item.widget()
             if widget:
                 widget.deleteLater()
-        portal_files = sorted(config_dir.glob("portal-info-*.toml"), key=lambda p: p.stem.lower())
+        portal_files = sorted(meganimus_config_dir.glob("portal-info-*.toml"))
         for portal_file in portal_files:
             try:
                 with open(portal_file, encoding="utf-8") as f:
@@ -2331,6 +2346,8 @@ class MultipleEditPortalDialog(QDialog):
             except Exception:
                 continue
         self.scroll_layout.addStretch()
+
+        self.update_executor_filter()
 
     def select_all_portals(self):
         for cb in self.portal_checkboxes.values():
@@ -2413,7 +2430,7 @@ class MultipleEditPortalDialog(QDialog):
                                 except Exception:
                                     pass
 
-                        art_dir = Path.home() / "AppsFiles" / "Meganimus" / "art"
+                        art_dir = meganimus_dir / "art"
                         art_dir.mkdir(parents=True, exist_ok=True)
                         ext = art_path.suffix.lower()
                         new_art_path = art_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
@@ -2448,7 +2465,7 @@ class MultipleEditPortalDialog(QDialog):
                                 except Exception:
                                     pass
 
-                        gui_dir = Path.home() / "AppsFiles" / "Meganimus" / "art" / "gui"
+                        gui_dir = meganimus_dir / "art" / "gui"
                         gui_dir.mkdir(parents=True, exist_ok=True)
                         ext = gui_path.suffix.lower()
                         new_gui_path = gui_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
@@ -2461,7 +2478,7 @@ class MultipleEditPortalDialog(QDialog):
             # Language
             lang = self.lang_combo.currentText()
             if lang != tr("DO_NOT_CHANGE"):
-                data["language"] = lang
+                data["language"] = "" if lang == tr("PLACEHOLDER_FOR_LANGUAGE") else lang
 
             # Checkboxes
             def apply_checkbox(cb_widget, key):
@@ -2492,6 +2509,9 @@ class MultipleEditPortalDialog(QDialog):
             with open(cb.portal_file, "w", encoding="utf-8") as f:
                 toml.dump(data, f)
 
+        self.update_executor_filter()
+        self.update_portal_list()
+
         if self.parent_ref:
             self.parent_ref.load_portals()
 
@@ -2511,11 +2531,9 @@ class PortalInfoViewerDialog(QDialog):
         self.setWindowTitle(tr("PORTAL_INFO_VIEWER_TITLE"))
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         if parent is not None:
-            self.destroyed.connect(lambda: setattr(parent, "portal_info_viewer", None))
+            self.destroyed.connect(partial(setattr, parent, "portal_info_viewer", None))
         self.resize(580, 480)
 
-        # Meganimus Directory
-        self.meganimus_dir = Path(meganimus_dir) if meganimus_dir else Path.home() / "AppsFiles" / "Meganimus"
         self.portals = self.load_portals()
 
         # Left widget: Search, combobox, list
@@ -2532,9 +2550,7 @@ class PortalInfoViewerDialog(QDialog):
         # Combobox for search
         self.search_mode_combo = QComboBox()
         self.search_mode_combo.addItems([tr("NAME"), tr("CONTENT")])
-        self.search_mode_combo.currentIndexChanged.connect(
-            lambda _: self.filter_portals(self.search_box.text())
-        )
+        self.search_mode_combo.currentIndexChanged.connect(self.update_filter_from_combo)
         left_layout.addWidget(self.search_mode_combo)
 
         # Scroll area for radio buttons
@@ -2596,6 +2612,10 @@ class PortalInfoViewerDialog(QDialog):
         self.radio_buttons = []
         self.create_portal_buttons()
 
+    def update_filter_from_combo(self):
+        current_text = self.search_box.text()
+        self.filter_portals(current_text)
+
     # In the MultipleEditPortalDialog, mark all the innovations that are visible
     def mark_listed(self):
         if not getattr(self, "multiple_edit_dialog", None):
@@ -2636,12 +2656,11 @@ class PortalInfoViewerDialog(QDialog):
 
     # Loads the available TOML files.
     def load_portals(self) -> list[dict]:
-        config_dir = self.meganimus_dir / "config"
         portals = []
-        if not config_dir.exists():
+        if not meganimus_config_dir.exists():
             return portals
 
-        for file in config_dir.glob("portal-info-*.toml"):
+        for file in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 with open(file, "r", encoding="utf-8") as f:
                     inv = toml.load(f)
@@ -2653,10 +2672,12 @@ class PortalInfoViewerDialog(QDialog):
 
     # Create radio buttons
     def create_portal_buttons(self):
-        # Sort alphabetically
-        self.portals.sort(
-            key=lambda i: (i.get("name") or i.get("display_name") or i.get("id") or "").lower()
-        )
+        # Sort alphabetically by filename (portal-info-)
+        def get_filename_sort_key(portal):
+            filename = portal.get("__filename", "")
+            return Path(filename).stem.lower()
+        
+        self.portals.sort(key=get_filename_sort_key)
 
         first_rb = None
         for inv in self.portals:
@@ -2690,7 +2711,7 @@ class PortalInfoViewerDialog(QDialog):
             if search_mode == tr("NAME"):
                 match = text in rb.text().lower()
             else:  # Content
-                file_path = self.meganimus_dir / "config" / filename
+                file_path = meganimus_dir / "config" / filename
                 if file_path.exists():
                     try:
                         with open(file_path, "r", encoding="utf-8") as f:
@@ -2728,7 +2749,7 @@ class PortalInfoViewerDialog(QDialog):
 
     # Display information by reading the TOML.
     def show_portal_info_from_file(self, filename: str):
-        file_path = self.meganimus_dir / "config" / filename
+        file_path = meganimus_dir / "config" / filename
         if not file_path.exists():
             self.text_box.clear()
             return
@@ -2762,6 +2783,7 @@ class PortalInfoViewerDialog(QDialog):
 
         value_translations = {
             "FPS_GALLIUM_HUD": tr("FPS_GALLIUM_HUD"),
+            "FPS_DXVK_HUD": tr("FPS_DXVK_HUD")
         }
 
         for key, value in inv.items():
@@ -2797,10 +2819,6 @@ class ShortcutManager(QDialog):
         super().__init__(parent)
         self.setWindowTitle(tr("SHORTCUTS_MANAGER_TITLE"))
         self.resize(340, 400)
-
-        # Meganimus base directory
-        self.meganimus_dir = Path.home() / "AppsFiles" / "Meganimus"
-        self.CONFIG_DIR = self.meganimus_dir / "config"
 
         # Load portals and shortcuts info
         self.portals = self.load_portals()
@@ -2851,32 +2869,39 @@ class ShortcutManager(QDialog):
         self.own_category_cb = QCheckBox(tr("OWN_CATEGORY"))
         own_category_checked = self.shortcut_manager_info.get("own_category", False)
         menu_dir_str = self.shortcut_manager_info.get("menu_dir", "")
-        
+
         # Uncheck and disable if menu_dir does not contain /.local/share/applications
         if "/.local/share/applications" not in menu_dir_str:
             own_category_checked = False
             self.own_category_cb.setEnabled(False)
-        
+
         self.own_category_cb.setChecked(own_category_checked)
         main_layout.addWidget(self.own_category_cb)
 
         # Folder selection
         grid = QGridLayout()
-        self.desktop_dir_input = QLineEdit(self.shortcut_manager_info.get("desktop_dir", ""))
-        self.desktop_dir_input.setReadOnly(True)
-        desktop_browse = QPushButton(tr("BROWSE_BUTTON"))
-        desktop_browse.clicked.connect(lambda: self.browse_folder(self.desktop_dir_input))
-        grid.addWidget(QLabel(tr("DESKTOP_FOLDER")), 0, 0)
-        grid.addWidget(self.desktop_dir_input, 0, 1)
-        grid.addWidget(desktop_browse, 0, 2)
 
+        # Desktop section
+        grid.addWidget(QLabel(tr("DESKTOP_FOLDER")), 0, 0)
+        self.desktop_dir_input = QLineEdit(self.shortcut_manager_info.get("desktop_dir", ""))
+        grid.addWidget(self.desktop_dir_input, 1, 0, 1, 3)
+
+        desktop_buttons = QHBoxLayout()
+        desktop_browse = QPushButton(tr("BROWSE_BUTTON"))
+        desktop_browse.clicked.connect(partial(self.browse_folder, self.desktop_dir_input))
+        desktop_buttons.addWidget(desktop_browse)
+        grid.addLayout(desktop_buttons, 2, 0, 1, 3)
+
+        # Menu section  
+        grid.addWidget(QLabel(tr("MENU_FOLDER")), 3, 0)
         self.menu_dir_input = QLineEdit(self.shortcut_manager_info.get("menu_dir", ""))
-        self.menu_dir_input.setReadOnly(True)
+        grid.addWidget(self.menu_dir_input, 4, 0, 1, 3)
+
+        menu_buttons = QHBoxLayout()
         menu_browse = QPushButton(tr("BROWSE_BUTTON"))
-        menu_browse.clicked.connect(lambda: self.browse_folder(self.menu_dir_input))
-        grid.addWidget(QLabel(tr("MENU_FOLDER")), 1, 0)
-        grid.addWidget(self.menu_dir_input, 1, 1)
-        grid.addWidget(menu_browse, 1, 2)
+        menu_browse.clicked.connect(partial(self.browse_folder, self.menu_dir_input))
+        menu_buttons.addWidget(menu_browse)
+        grid.addLayout(menu_buttons, 5, 0, 1, 3)
 
         grid.setContentsMargins(0, 0, 0, 0)
 
@@ -2888,7 +2913,7 @@ class ShortcutManager(QDialog):
         # Show locations and update button
         buttons_layout = QHBoxLayout()
         self.locations_btn = QPushButton(tr("SHORTCUTS_PATHS"))
-        self.locations_btn.clicked.connect(lambda: self.locations_widget.setVisible(not self.locations_widget.isVisible()))
+        self.locations_btn.clicked.connect(self.toggle_locations)
         buttons_layout.addWidget(self.locations_btn)
         buttons_layout.addStretch()
         self.update_shortcuts = QPushButton(tr("UPDATE_SHORTCUTS"))
@@ -2900,6 +2925,9 @@ class ShortcutManager(QDialog):
         self.view_combo.setCurrentIndex(1)
         self.update_list_view()
         self.view_combo.setCurrentIndex(0)
+
+    def toggle_locations(self):
+        self.locations_widget.setVisible(not self.locations_widget.isVisible())
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
@@ -2943,12 +2971,12 @@ class ShortcutManager(QDialog):
         # Current folder and existing desktops
         folder_path = Path(self.shortcut_manager_info.get(f"{self.current_view}_dir", ""))
         existing_desktops = set()
-        
+
         if folder_path.exists():
-            safe_to_display = {data["safe_portal_name"]: name 
-                              for name, data in self.portals.items() 
+            safe_to_display = {data["safe_portal_name"]: name
+                              for name, data in self.portals.items()
                               if "safe_portal_name" in data}
-            
+
             for f in folder_path.glob("portal-*.desktop"):
                 if self.is_meganimus_desktop(f):
                     safe_name = f.stem.replace("portal-", "")
@@ -2983,9 +3011,9 @@ class ShortcutManager(QDialog):
     # Loading and saving
     def load_portals(self) -> dict:
         invs = {}
-        if not self.CONFIG_DIR.exists():
+        if not meganimus_config_dir.exists():
             return invs
-        for f in self.CONFIG_DIR.glob("portal-info-*.toml"):
+        for f in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 content = f.read_text(encoding="utf-8")
                 data = toml.loads(content)
@@ -3003,13 +3031,17 @@ class ShortcutManager(QDialog):
         settings = load_settings()
         shortcut_section = settings.get("shortcut", {})
 
-        # Get values or use defaults
+        # Get values from config or empty strings
+        desktop_dir = shortcut_section.get("desktop_dir", "")
+        menu_dir = shortcut_section.get("menu_dir", "")
+        
+        meganimus_command = shortcut_section.get("meganimus_command", "meganimus")
+        own_category = shortcut_section.get("own_category", False)
 
-        # Determine desktop_dir from XDG user dirs
-        desktop_dir = shortcut_section.get("desktop_dir")
+        # If desktop_dir is empty in config, calculate default
         if not desktop_dir:
-            desktop_dir = Path.home() / "Desktop"  # fallback
-            user_dirs_file = Path.home() / ".config" / "user-dirs.dirs"
+            desktop_dir = home_dir / "Desktop"  # fallback
+            user_dirs_file = home_dir / ".config" / "user-dirs.dirs"
             if user_dirs_file.exists():
                 try:
                     with open(user_dirs_file, encoding="utf-8") as f:
@@ -3017,19 +3049,15 @@ class ShortcutManager(QDialog):
                             line = line.strip()
                             if line.startswith("XDG_DESKTOP_DIR"):
                                 path = line.split("=", 1)[1].strip().strip('"')
-                                path = path.replace("$HOME", str(Path.home()))
+                                path = path.replace("$HOME", str(home_dir))
                                 desktop_dir = Path(path)
                                 break
                 except Exception:
                     pass
 
-        # Determine menu_dir
-        menu_dir = shortcut_section.get("menu_dir") or str(
-            Path.home() / ".local" / "share" / "applications")
-
-        meganimus_command = shortcut_section.get("meganimus_command") or "meganimus"
-
-        own_category = shortcut_section.get("own_category", False)
+        # If menu_dir is empty in config, use default
+        if not menu_dir:
+            menu_dir = str(home_dir / ".local" / "share" / "applications")
 
         # Processed settings for shortcut manager
         info = {
@@ -3040,15 +3068,6 @@ class ShortcutManager(QDialog):
             "menu_file": shortcut_section.get("menu_file", ""),
             "directory_file": shortcut_section.get("directory_file", "")
         }
-
-        # Save defaults only if fields are empty
-        if not shortcut_section.get("desktop_dir", "") or not shortcut_section.get("menu_dir", ""):
-            settings.setdefault("shortcut", {})
-            if not shortcut_section.get("desktop_dir", ""):
-                settings["shortcut"]["desktop_dir"] = str(desktop_dir)
-            if not shortcut_section.get("menu_dir", ""):
-                settings["shortcut"]["menu_dir"] = str(menu_dir)
-            save_settings(settings)
 
         return info
 
@@ -3065,99 +3084,31 @@ class ShortcutManager(QDialog):
 
     # Folder browsing
     def browse_folder(self, line_edit: QLineEdit):
-        folder = QFileDialog.getExistingDirectory(self, tr("CHOOSE_FOLDER"), line_edit.text())
+        if line_edit == self.desktop_dir_input:
+            initial_dir = str(home_dir)
+        else:
+            initial_dir = str(home_dir / ".local" / "share" / "applications")
+        
+        folder = QFileDialog.getExistingDirectory(self, tr("SELECT_FOLDER"), initial_dir)
         if not folder:
             return
 
-        old_folder = Path(line_edit.text())
         new_folder = Path(folder)
-
-        if old_folder.exists() and old_folder != new_folder:
-            # Find the Meganimus .desktop file in the old folder.
-            meganimus_desktops = []
-            for f in old_folder.glob("*.desktop"):
-                try:
-                    content = f.read_text(encoding="utf-8")
-                    if self.is_meganimus_desktop(f):
-                        meganimus_desktops.append(f)
-                except Exception:
-                    continue
-
-            # Only ask if there is one.
-            if meganimus_desktops:
-                reply = QMessageBox.question(
-                    self,
-                    tr("APP_NAME"),
-                    tr("MOVE_SHORTCUTS_CONFIRM", old=str(old_folder), new=str(new_folder)),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-                )
-                if reply == QMessageBox.StandardButton.Yes:
-                    new_folder.mkdir(parents=True, exist_ok=True)
-                    for f in meganimus_desktops:
-                        try:
-                            f.rename(new_folder / f.name)
-                        except Exception as e:
-                            print(tr("ERROR_MOVING_SHORTCUTS", file=f, error=e))
-
-        # Update the line_edit and shortcut manager info.
         line_edit.setText(str(new_folder))
+
         if line_edit == self.menu_dir_input:
-            self.shortcut_manager_info["menu_dir"] = str(new_folder)
-            view_key = "menu"
-            
-            # Update checkbox based on menu_dir
             if "/.local/share/applications" not in str(new_folder):
                 self.own_category_cb.setChecked(False)
                 self.own_category_cb.setEnabled(False)
             else:
                 self.own_category_cb.setEnabled(True)
-        elif line_edit == self.desktop_dir_input:
-            self.shortcut_manager_info["desktop_dir"] = str(new_folder)
-            view_key = "desktop"
-
-        self.save_shortcut_manager_info()
-
-        # Update the checkboxes according to the new folder.
-        folder_path = new_folder
-        existing_desktops = set()
-        
-        if folder_path.exists():
-            safe_to_display = {data["safe_portal_name"]: name 
-                              for name, data in self.portals.items() 
-                              if "safe_portal_name" in data}
-            
-            for f in folder_path.glob("portal-*.desktop"):
-                if self.is_meganimus_desktop(f):
-                    safe_name = f.stem.replace("portal-", "")
-                    if safe_name in safe_to_display:
-                        existing_desktops.add(safe_to_display[safe_name])
-
-        # Update existing checkboxes
-        for name, cb in self.checkbox_widgets[view_key].items():
-            cb.setChecked(name in existing_desktops)
-
-        # Reapply filter
-        while self.scroll_layout.count():
-            item = self.scroll_layout.takeAt(0)
-            if item.widget():
-                item.widget().setParent(None)
-
-        text = self.search_bar.text().lower()
-        for name, cb in self.checkbox_widgets[view_key].items():
-            if text in name.lower():
-                self.scroll_layout.addWidget(cb)
-                cb.show()
-            else:
-                cb.hide()
-
-        self.scroll_layout.addStretch()
 
     # Save and create .desktop
 
     def remove_all_meganimus_desktops(self, folder: Path):
         if not folder.exists():
             return
-        
+
         for f in folder.glob("portal-*.desktop"):
             try:
                 if self.is_meganimus_desktop(f):
@@ -3189,6 +3140,12 @@ class ShortcutManager(QDialog):
             )
             return
 
+        old_desktop_dir = Path(self.shortcut_manager_info.get("desktop_dir", ""))
+        old_menu_dir = Path(self.shortcut_manager_info.get("menu_dir", ""))
+        
+        self.remove_all_meganimus_desktops(old_desktop_dir)
+        self.remove_all_meganimus_desktops(old_menu_dir)
+
         self.shortcut_manager_info["menu_dir"] = str(menu_dir)
         self.shortcut_manager_info["desktop_dir"] = str(desktop_dir)
         self.shortcut_manager_info["own_category"] = self.own_category_cb.isChecked()
@@ -3197,13 +3154,13 @@ class ShortcutManager(QDialog):
         if not self.own_category_cb.isChecked():
             saved_menu_file = self.shortcut_manager_info.get("menu_file", "")
             saved_directory_file = self.shortcut_manager_info.get("directory_file", "")
-            
+
             if saved_menu_file and Path(saved_menu_file).exists():
                 Path(saved_menu_file).unlink()
-            
+
             if saved_directory_file and Path(saved_directory_file).exists():
                 Path(saved_directory_file).unlink()
-            
+
             self.shortcut_manager_info["menu_file"] = ""
             self.shortcut_manager_info["directory_file"] = ""
 
@@ -3220,7 +3177,7 @@ class ShortcutManager(QDialog):
             directory_dir = home_path / ".local" / "share" / "desktop-directories"
             menu_dir_path.mkdir(parents=True, exist_ok=True)
             directory_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Create Meganimus.menu
             menu_content = "\n".join([
                 "<Menu>",
@@ -3236,7 +3193,7 @@ class ShortcutManager(QDialog):
             ])
             menu_file_path = menu_dir_path / "Meganimus.menu"
             menu_file_path.write_text(menu_content, encoding="utf-8")
-            
+
             # Create Meganimus.directory
             directory_content = "\n".join([
                 "[Desktop Entry]",
@@ -3245,11 +3202,11 @@ class ShortcutManager(QDialog):
             ])
             directory_file_path = directory_dir / "Meganimus.directory"
             directory_file_path.write_text(directory_content, encoding="utf-8")
-            
+
             # Save the file paths for menu_file and directory_file.
             self.shortcut_manager_info["menu_file"] = str(menu_file_path)
             self.shortcut_manager_info["directory_file"] = str(directory_file_path)
-            
+
             # Save again with the paths
             self.save_shortcut_manager_info()
 
@@ -3293,7 +3250,7 @@ class ShortcutManager(QDialog):
             f"Icon={gui_path}",
             "StartupWMClass=meganimus",
             f"Categories={categories}",
-            "Keywords=gaming;emulator;portal;",
+            "Keywords=gaming;portal;",
             "Terminal=false",
             "Type=Application"
         ]
@@ -3341,14 +3298,14 @@ class Meganimus(QMainWindow):
                     self.setWindowIcon(icon)
                     break
 
-        self.meganimus_dir = Path.home() / "AppsFiles" / "Meganimus"
         self.setup_directories()
 
         # Toolbar
         self.toolbar = QToolBar()
         self.toolbar.setMovable(True)
         self.toolbar.setFloatable(False)
-        self.toolbar.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
+
+        self.toolbar.setVisible(settings["design"].get("toolbar_visible", True))
 
         toolbar_position = settings["design"].get("toolbar_position", "top")
 
@@ -3365,7 +3322,6 @@ class Meganimus(QMainWindow):
 
         # MenuBar
         self.menu_bar = self.menuBar()
-        self.menu_bar.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
 
         # Menu PORTAL
         self.portal_menu = self.menu_bar.addMenu(tr("PORTAL"))
@@ -3409,7 +3365,8 @@ class Meganimus(QMainWindow):
         self.extras_menu.addAction(self.about_action)
 
         # Increase the size of icons
-        self.toolbar.setIconSize(QSize(32, 32))
+        toolbar_icon_size = settings["design"].get("toolbar_icon_size", 32)
+        self.toolbar.setIconSize(QSize(toolbar_icon_size, toolbar_icon_size))
 
         self.run_action = QAction(QIcon.fromTheme("media-playback-start"), tr("START_PORTAL"), self)
         self.run_action.triggered.connect(self.start_selected_portal)
@@ -3440,6 +3397,12 @@ class Meganimus(QMainWindow):
         self.main_layout = QVBoxLayout()
         self.central_widget.setLayout(self.main_layout)
 
+        if not settings["design"].get("toolbar_visible", True):
+            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.central_widget.customContextMenuRequested.connect(self.show_global_context_menu)
+
+        self.toolbar.visibilityChanged.connect(self.save_toolbar_visibility)
+
         self.portal_list_widget = QListWidget()
         self.portal_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
 
@@ -3451,11 +3414,11 @@ class Meganimus(QMainWindow):
         icon_width_classic = settings["design"].get("icon_width_classic", 420)
         icon_width_grid = settings["design"].get("icon_width_grid", 300)
 
-        if layout_mode in ("list", "list-bare"):
+        if layout_mode in ("list"):
             self.portal_list_widget.setViewMode(QListWidget.ViewMode.ListMode)
             self.portal_list_widget.setMovement(QListWidget.Movement.Static)
             self.portal_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)
-        elif layout_mode in ("grid", "grid-bare"):
+        elif layout_mode in ("grid"):
             self.portal_list_widget.setViewMode(QListWidget.ViewMode.IconMode)
             self.portal_list_widget.setFlow(QListView.Flow.LeftToRight)
             self.portal_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)
@@ -3466,7 +3429,7 @@ class Meganimus(QMainWindow):
             self.portal_list_widget.setIconSize(QSize(icon_width, icon_height))
             self.portal_list_widget.setGridSize(QSize(grid_width, grid_height))
             self.portal_list_widget.setMovement(QListWidget.Movement.Static)
-        elif layout_mode in ("classic", "classic-bare"):
+        elif layout_mode in ("classic"):
             self.portal_list_widget.setViewMode(QListWidget.ViewMode.ListMode)
             self.portal_list_widget.setMovement(QListWidget.Movement.Static)
             self.portal_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)
@@ -3480,7 +3443,7 @@ class Meganimus(QMainWindow):
         self.search_widget = QWidget()
         self.search_layout = QHBoxLayout(self.search_widget)
         self.search_layout.setContentsMargins(0, 0, 0, 0)
-        self.search_layout.setSpacing(4)
+        self.search_layout.setSpacing(0)
 
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText(tr("SEARCH"))
@@ -3514,22 +3477,6 @@ class Meganimus(QMainWindow):
         self.global_context_menu.addAction(self.edit_portal_action)
         self.global_context_menu.addAction(self.search_action)
         self.global_context_menu.addSeparator()
-        # Submenu PORTAL
-        portal_submenu = QMenu(tr("PORTAL"), self.global_context_menu)
-        portal_submenu.addAction(self.multiple_create_portals_action)
-        portal_submenu.addAction(self.multiple_remove_portals_action)
-        portal_submenu.addAction(self.multiple_edit_portals_action)
-        portal_submenu.addAction(self.shortcut_manager_action)
-        self.global_context_menu.addMenu(portal_submenu)
-        # Submenu TRANSFER
-        transfer_submenu = QMenu(tr("TRANSFER"), self.global_context_menu)
-        transfer_submenu.addAction(self.transfer_arts_action)
-        self.global_context_menu.addMenu(transfer_submenu)
-        # Submenu EXTRAS
-        extras_submenu = QMenu(tr("EXTRAS"), self.global_context_menu)
-        extras_submenu.addAction(self.settings_action)
-        extras_submenu.addAction(self.about_action)
-        self.global_context_menu.addMenu(extras_submenu)
 
         # ===== System Tray Icon =====
         self.tray_icon = QSystemTrayIcon(self)
@@ -3563,20 +3510,6 @@ class Meganimus(QMainWindow):
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
 
-        # Bare mode (Without toolbar and menubar, using context menu)
-        is_bare = layout_mode in ("classic-bare", "grid-bare", "list-bare")
-        self.menu_bar.setVisible(not is_bare)
-        self.toolbar.setVisible(not is_bare)
-        if is_bare:
-            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-            self.central_widget.customContextMenuRequested.connect(self.show_global_context_menu)
-        else:
-            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-            try:
-                self.central_widget.customContextMenuRequested.disconnect(self.show_global_context_menu)
-            except Exception:
-                pass
-
         start_minimized = settings["window"].get("start_minimized", False)
         if start_minimized:
             self.hide()
@@ -3591,10 +3524,19 @@ class Meganimus(QMainWindow):
         self.transfer_successful = False
 
     def show_global_context_menu(self, pos):
-        layout_mode = load_settings()["design"].get("layout_mode", "classic")
-        if layout_mode in ("classic-bare", "grid-bare", "list-bare"):
-            global_pos = self.central_widget.mapToGlobal(pos)
-            self.global_context_menu.popup(global_pos)
+        global_pos = self.central_widget.mapToGlobal(pos)
+        self.global_context_menu.popup(global_pos)
+
+    def save_toolbar_visibility(self, visible):
+        settings = load_settings()
+        settings["design"]["toolbar_visible"] = visible
+        save_settings(settings)
+
+        if not visible:
+            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.central_widget.customContextMenuRequested.connect(self.show_global_context_menu)
+        else:
+            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
 
     def toggle_search_bar(self):
         visible = not self.search_bar.isVisible()
@@ -3637,6 +3579,7 @@ class Meganimus(QMainWindow):
         settings = load_settings()
         settings["design"]["search_bar_visible"] = self.search_bar.isVisible()
         settings["design"]["executor_filter_index"] = self.executor_filter.currentIndex()
+        settings["design"]["toolbar_visible"] = self.toolbar.isVisible()
         area = self.toolBarArea(self.toolbar)
         if area == Qt.ToolBarArea.TopToolBarArea:
             settings["design"]["toolbar_position"] = "top"
@@ -3718,7 +3661,7 @@ class Meganimus(QMainWindow):
         self.real_portal_process = None
 
         # Unmount/eject mounted ISO, if present
-        mount_point = Path.home() / "AppsFiles" / "Meganimus" / "mounted_iso"
+        mount_point = meganimus_dir / "mounted_iso"
 
         if mount_point.exists():
             try:
@@ -3755,10 +3698,11 @@ class Meganimus(QMainWindow):
 
     def setup_directories(self):
         """Creates the main Meganimus directory structure using pathlib with real folder names."""
-        base = Path(self.meganimus_dir)
+        base = meganimus_dir
         subdirs = [
             base / "config",
-            base / "art"
+            base / "art",
+            base / "umu-prefix",
         ]
 
         for subdir in subdirs:
@@ -3802,28 +3746,28 @@ class Meganimus(QMainWindow):
 
         self.portal_list_widget.clear()
 
-        config_dir = Path(self.meganimus_dir) / "config"
-        if not config_dir.exists():
+        if not meganimus_config_dir.exists():
             return
 
+        portal_files = sorted(meganimus_config_dir.glob("portal-info-*.toml"))
         portals = []
-        for file_path in config_dir.glob("portal-info-*.toml"):
-            try:
-                with file_path.open('r', encoding='utf-8') as f:
-                    portal_data = toml.load(f)
-                    portals.append((portal_data, file_path))
-            except (IOError, toml.TomlDecodeError) as e:
-                print(tr("ERROR_LOADING_FILE", file=file_path, error=e))
-
-        portals.sort(key=lambda g: g[0].get('name', '').casefold())
 
         restored_selection_item = None
-        for portal_data, file_path in portals:
-            item = self.add_portal_to_list(portal_data)
-            item.setData(Qt.ItemDataRole.UserRole, file_path)  # Associate the TOML with the item
+        for portal_file in portal_files:
+            try:
+                with open(portal_file, encoding="utf-8") as f:
+                    portal_data = toml.load(f)
 
-            if selected_portal_file and selected_portal_file == file_path:
-                restored_selection_item = item
+                portals.append((portal_data, portal_file))
+                
+                item = self.add_portal_to_list(portal_data)
+                item.setData(Qt.ItemDataRole.UserRole, portal_file)
+
+                if selected_portal_file and selected_portal_file == portal_file:
+                    restored_selection_item = item
+                    
+            except (IOError, toml.TomlDecodeError) as e:
+                print(tr("ERROR_LOADING_FILE", file=portal_file, error=e))
 
         # Restores the selection
         if restored_selection_item:
@@ -3842,7 +3786,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
@@ -3867,9 +3811,8 @@ class Meganimus(QMainWindow):
             QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTAL_SELECTED_ERROR"))
             return
 
-        config_dir = Path(self.meganimus_dir) / "config"
         safe_portal_name = portal_name.replace(" ", "_").lower()
-        portal_file_path = config_dir / f"portal-info-{safe_portal_name}.toml"
+        portal_file_path = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
 
         try:
             with portal_file_path.open('r', encoding='utf-8') as f:
@@ -3904,9 +3847,8 @@ class Meganimus(QMainWindow):
         portal_name = item_or_name.text() if isinstance(item_or_name, QListWidgetItem) else str(item_or_name)
         print(tr("STARTING_PORTAL", name=portal_name))
 
-        config_dir = Path(self.meganimus_dir) / "config"
         safe_portal_name = portal_name.replace(" ", "_").lower()
-        portal_file_path = config_dir / f"portal-info-{safe_portal_name}.toml"
+        portal_file_path = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
 
         try:
             with portal_file_path.open('r', encoding='utf-8') as f:
@@ -3933,7 +3875,7 @@ class Meganimus(QMainWindow):
             if executor == "RPCS3" and game_path_full.suffix.lower() == ".iso":
 
                 iso_path = game_path_full
-                mount_point = Path.home() / "AppsFiles" / "Meganimus" / "mounted_iso"
+                mount_point = meganimus_dir / "mounted_iso"
                 mount_point.mkdir(parents=True, exist_ok=True)
 
                 # Check if it is already mounted
@@ -3984,6 +3926,8 @@ class Meganimus(QMainWindow):
             if show_fps:
                 if fps_hud_type == "FPS_GALLIUM_HUD":
                     env["GALLIUM_HUD"] = "fps+cpu,frametime"
+                elif fps_hud_type == "FPS_DXVK_HUD":
+                    env["DXVK_HUD"] = "fps,gpuload,frametimes"
 
             # Extra variables
             env_vars_str = portal_data.get('env_vars', '').strip()
@@ -3992,6 +3936,12 @@ class Meganimus(QMainWindow):
                     if "=" in item:
                         key, value = item.split("=", 1)
                         env[key] = value
+
+            # Set XDG_DATA_HOME to redirect UMU data to $HOME directory.
+            if executor.lower() == "umu":
+                env['XDG_DATA_HOME'] = str(home_dir)
+                if 'WINEPREFIX' not in env:
+                    env['WINEPREFIX'] = str(home_dir / 'AppsFiles' / 'Meganimus' / 'umu-prefix')
 
             # Gamemode
             use_gamemode = portal_data.get('use_gamemode', True)
@@ -4082,7 +4032,7 @@ class Meganimus(QMainWindow):
 
             # For final command debugging
             debug_command = []
-            for var in ["LC_ALL", "LANG", "LANGUAGE", "GALLIUM_HUD"]:
+            for var in ["LC_ALL", "LANG", "LANGUAGE", "WINEPREFIX", "GALLIUM_HUD", "DXVK_HUD"]:
                 if var in env:
                     debug_command.append(f"{var}={env[var]}")
 
@@ -4271,17 +4221,9 @@ class Meganimus(QMainWindow):
                     icon.addPixmap(pixmap, QIcon.Mode.Disabled, QIcon.State.Off)
 
         if icon is None:
-            palette = QApplication.palette()
-            pixmap = QPixmap(self.portal_list_widget.iconSize())
-            pixmap.fill(palette.color(QPalette.ColorRole.Base))
-            painter = QPainter(pixmap)
-            painter.setPen(palette.color(QPalette.ColorRole.Text))
-            painter.setFont(font)
-            painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, " /\\_/\\\n >^.^<")
-            painter.end()
-            icon = QIcon(pixmap)
+            icon = self.windowIcon()
 
-        if layout_mode not in ["list", "list-bare"] and icon is not None:
+        if layout_mode not in ["list"] and icon is not None:
             item.setIcon(icon)
 
         self.portal_list_widget.addItem(item)
@@ -4351,13 +4293,13 @@ class Meganimus(QMainWindow):
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
                 )
                 if reply == QMessageBox.StandardButton.Yes:
-                    webbrowser.open("https://github.com/Kyuyrii/Meganimus/releases")
+                    subprocess.Popen(['xdg-open', 'https://github.com/Kyuyrii/Meganimus/releases'])
         except Exception as e:
             QMessageBox.warning(self, tr("APP_NAME"), tr("UPDATE_ERROR", error=e))
 
 # Heroes and icons images / SteamGridDB
-HEROES_DIR = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "heroes"
-ICONS_DIR = Path.home() / "AppsFiles" / "Meganimus" / "sgdb" / "icons"
+HEROES_DIR = meganimus_dir / "sgdb" / "heroes"
+ICONS_DIR = meganimus_dir / "sgdb" / "icons"
 HEROES_DIR.mkdir(parents=True, exist_ok=True)
 ICONS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -4484,7 +4426,7 @@ class SteamGridDBApp(QDialog):
 
         self.load_icons_button = QPushButton(tr("LOAD_ICONS"))
         self.load_icons_button.setEnabled(False)
-        self.load_icons_button.clicked.connect(lambda: self.load_artwork("icons"))
+        self.load_icons_button.clicked.connect(partial(self.load_artwork, "icons"))
         buttons_row.addWidget(self.load_icons_button)
 
         self.transfer_button = QPushButton(tr("TRANSFER"))
@@ -4496,7 +4438,7 @@ class SteamGridDBApp(QDialog):
 
         self.load_heroes_button = QPushButton(tr("LOAD_HEROES"))
         self.load_heroes_button.setEnabled(False)
-        self.load_heroes_button.clicked.connect(lambda: self.load_artwork("heroes"))
+        self.load_heroes_button.clicked.connect(partial(self.load_artwork, "heroes"))
         buttons_row.addWidget(self.load_heroes_button)
 
         main_layout.addLayout(buttons_row)
@@ -4516,18 +4458,21 @@ class SteamGridDBApp(QDialog):
 
     def run_auto_transfer(self):
         self._cancel_auto = False
+
+        def get_score(item):
+            return item.get("score", 0)
+
         if not self.headers:
             QMessageBox.warning(self, tr("APP_NAME"), tr("API_KEY_SAVE_FIRST"))
             return
 
-        config_dir = Path.home() / "AppsFiles" / "Meganimus" / "config"
-        if not config_dir.exists():
-            QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTALS"))
+        if not any(meganimus_config_dir.glob("portal-info-*.toml")):
+            QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
             return
 
         # Portals list
         portals = []
-        for toml_file in config_dir.glob("portal-info-*.toml"):
+        for toml_file in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 with open(toml_file, "r", encoding="utf-8") as fh:
                     inv = toml.load(fh)
@@ -4564,8 +4509,8 @@ class SteamGridDBApp(QDialog):
         QApplication.processEvents()
 
         # Directories
-        ART_DIR = Path.home() / "AppsFiles" / "Meganimus" / "art"
-        GUI_DIR = Path.home() / "AppsFiles" / "Meganimus" / "art" / "gui"
+        ART_DIR = meganimus_dir / "art"
+        GUI_DIR = meganimus_dir / "art" / "gui"
         ART_DIR.mkdir(parents=True, exist_ok=True)
         GUI_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -4605,7 +4550,7 @@ class SteamGridDBApp(QDialog):
                     heroes = []
 
                 if heroes:
-                    heroes.sort(key=lambda a: a.get("score", 0), reverse=True)
+                    heroes.sort(key=get_score, reverse=True)
                     best = heroes[0]
                     img_url = (
                         best.get("thumb")
@@ -4640,7 +4585,7 @@ class SteamGridDBApp(QDialog):
                     icons = []
 
                 if icons:
-                    icons.sort(key=lambda a: a.get("score", 0), reverse=True)
+                    icons.sort(key=get_score, reverse=True)
                     best = icons[0]
                     img_url = (
                         best.get("thumb")
@@ -5042,7 +4987,7 @@ if __name__ == "__main__":
 
         if data.startswith("--start-portal "):
             portal_name = data[len("--start-portal "):].strip('"')
-            QTimer.singleShot(200, lambda: window.start_portal(portal_name))
+            QTimer.singleShot(200, partial(window.start_portal, portal_name))
 
         socket.disconnectFromServer()
 
@@ -5082,7 +5027,7 @@ if __name__ == "__main__":
         try:
             idx = sys.argv.index("--start-portal") + 1
             portal_name = sys.argv[idx]
-            QTimer.singleShot(500, lambda: window.start_portal(portal_name))
+            QTimer.singleShot(500, partial(window.start_portal, portal_name))
         except IndexError:
             pass
 

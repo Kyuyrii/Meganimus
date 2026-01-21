@@ -7,6 +7,6 @@ Comment=A launcher for native and emulator games
 Comment[pt_BR]=Um launcher para jogos nativos e de emuladores
 Comment[es_ES]=Un lanzador para juegos nativos y emuladores
 Categories=Game;
-Keywords=gaming;emulator;portal;
+Keywords=gaming;portal;
 Terminal=false
 Type=Application
