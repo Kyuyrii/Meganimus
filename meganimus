@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6"
+__version__ = "1.6.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -2221,7 +2221,7 @@ class MultipleEditPortalDialog(QDialog):
             self.portal_info_viewer.activateWindow()
             return
 
-        self.portal_info_viewer = PortalInfoViewerDialog(self.parent_ref.meganimus_dir, self, multiple_edit_dialog=self)
+        self.portal_info_viewer = PortalInfoViewerDialog(meganimus_dir, self, multiple_edit_dialog=self)
         self.portal_info_viewer.finished.connect(partial(setattr, self, "portal_info_viewer", None))
         self.portal_info_viewer.show()
 
