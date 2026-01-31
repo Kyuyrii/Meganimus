@@ -640,6 +640,7 @@ def load_settings() -> dict:
 
 def save_settings(data: dict) -> None:
     """Saves settings in TOML."""
+    meganimus_config_dir.mkdir(parents=True, exist_ok=True)
     with open(meganimus_settings_file, "w", encoding="utf-8") as f:
         toml.dump(data, f)
 
