@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.1.1"
+__version__ = "1.6.1.2"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -544,7 +544,6 @@ def detect_default_settings() -> dict:
         "shortcut": {
             "desktop_dir": "",
             "menu_dir": "",
-            "meganimus_command": "meganimus",
             "own_category": False,
             "menu_file": "",
             "directory_file": "",
@@ -3027,15 +3026,14 @@ class ShortcutManager(QDialog):
         return invs
 
     def load_shortcut_manager_info(self):
-        """Load menu_dir, desktop_dir and meganimus_command from TOML settings."""
+        """Load menu_dir and desktop_dir from TOML settings."""
         settings = load_settings()
         shortcut_section = settings.get("shortcut", {})
 
         # Get values from config or empty strings
         desktop_dir = shortcut_section.get("desktop_dir", "")
         menu_dir = shortcut_section.get("menu_dir", "")
-        
-        meganimus_command = shortcut_section.get("meganimus_command", "meganimus")
+
         own_category = shortcut_section.get("own_category", False)
 
         # If desktop_dir is empty in config, calculate default
@@ -3063,7 +3061,6 @@ class ShortcutManager(QDialog):
         info = {
             "desktop_dir": str(desktop_dir),
             "menu_dir": str(menu_dir),
-            "meganimus_command": meganimus_command,
             "own_category": own_category,
             "menu_file": shortcut_section.get("menu_file", ""),
             "directory_file": shortcut_section.get("directory_file", "")
@@ -3238,7 +3235,7 @@ class ShortcutManager(QDialog):
         if os.environ.get("SNAP"):
             current_meganimus = "snap run meganimus"
         else:
-            current_meganimus = self.shortcut_manager_info.get("meganimus_command", "meganimus")
+            current_meganimus = os.path.abspath(sys.argv[0])
 
         current_meganimus += f' --start-portal "{name}"'
 
