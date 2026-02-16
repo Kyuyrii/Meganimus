@@ -32,7 +32,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.1.2"
+__version__ = "1.6.2"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 BUILTIN_TRANSLATIONS = {
@@ -103,12 +103,11 @@ BUILTIN_TRANSLATIONS = {
         "FAILED_UPDATE_TOML": "Could not update portal information: {error}",
         "FILE": "File",
         "FOLDER": "Folder",
-        "FPS_DXVK_HUD": "DXVK HUD (Only UMU)",
         "FPS_GALLIUM_HUD": "Gallium HUD (Not always compatible)",
         "GAMEMODE": "Use Feral gamemode",
         "ICON_TOOLBAR_SIZE": "Button size",
-        "ICON_WIDTH_CLASSIC": "Icon size (Classic)",
-        "ICON_WIDTH_GRID": "Icon size (Grid)",
+        "ICON_WIDTH_CLASSIC": "Art size (Classic)",
+        "ICON_WIDTH_GRID": "Art size (Grid)",
         "IMAGE_FILTER": "Image Files (*.jpg *.jpeg *.png *.webp);;All Files (*)",
         "ISO_ALREADY_MOUNTED": "ISO is already mounted at {mount}",
         "ISO_MOUNT_DIR_REMOVED": "Mounted ISO directory removed: {mount}",
@@ -192,7 +191,6 @@ BUILTIN_TRANSLATIONS = {
         "SHORTCUTS_OF_DESKTOP": "Desktop shortcuts",
         "SHORTCUTS_OF_MENU": "Menu shortcuts",
         "SHORTCUTS_PATHS": "Paths",
-        "SHORTCUTS_SAVED": "Updated shortcuts",
         "SHOW_FPS_OPTION": "Show FPS",
         "SHOW_FPS_OPTION_HUD": "Selected HUD",
         "START": "Start",
@@ -281,12 +279,11 @@ BUILTIN_TRANSLATIONS = {
         "FAILED_UPDATE_TOML": "Não foi possível atualizar as informações do portal: {error}",
         "FILE": "Arquivo",
         "FOLDER": "Pasta",
-        "FPS_DXVK_HUD": "DXVK HUD (Somente UMU)",
         "FPS_GALLIUM_HUD": "Gallium HUD (Nem sempre compatível)",
         "GAMEMODE": "Usar Feral gamemode",
         "ICON_TOOLBAR_SIZE": "Tamanho dos botões",
-        "ICON_WIDTH_CLASSIC": "Tamanho do ícone (Clássico)",
-        "ICON_WIDTH_GRID": "Tamanho do ícone (Grade)",
+        "ICON_WIDTH_CLASSIC": "Tamanho da arte (Clássico)",
+        "ICON_WIDTH_GRID": "Tamanho da arte (Grade)",
         "IMAGE_FILTER": "Arquivos de imagem (*.jpg *.jpeg *.png *.webp);;Todos os arquivos (*)",
         "ISO_ALREADY_MOUNTED": "ISO já está montada em {mount}",
         "ISO_MOUNT_DIR_REMOVED": "Diretório da ISO montada removido: {mount}",
@@ -370,7 +367,6 @@ BUILTIN_TRANSLATIONS = {
         "SHORTCUTS_OF_DESKTOP": "Atalhos da área da trabalho",
         "SHORTCUTS_OF_MENU": "Atalhos do menu",
         "SHORTCUTS_PATHS": "Caminhos",
-        "SHORTCUTS_SAVED": "Atalhos atualizados",
         "SHOW_FPS_OPTION": "Mostrar FPS",
         "SHOW_FPS_OPTION_HUD": "HUD selecionado",
         "START": "Iniciar",
@@ -396,9 +392,11 @@ BUILTIN_TRANSLATIONS = {
 
 # A Snap version of Meganimus isn't viable; it's only here to mimic the behavior of Zordeer.
 if os.environ.get("SNAP"):
-    meganimus_dir: Path = Path(os.environ["SNAP_REAL_HOME"]).joinpath("AppsFiles", "Meganimus")
+    meganimus_dir: Path = Path(os.environ["SNAP_REAL_HOME"]).joinpath("App", "Meganimus")
+elif os.environ.get("container") == "flatpak":
+    meganimus_dir: Path = Path(os.environ.get("HOST_HOME", Path.home())).joinpath("App", "Meganimus")
 else:
-    meganimus_dir: Path = (Path.home() / "AppsFiles" / "Meganimus")
+    meganimus_dir: Path = (Path.home() / "App" / "Meganimus")
 home_dir = meganimus_dir.parent.parent
 
 # Loads translations from external TOML files.
@@ -516,7 +514,7 @@ PORTAL_LOCALE_OPTIONS = [
 ]
 
 # Meganimus settings (TOML)
-# $HOME/AppsFiles/Meganimus/config/meganimus-settings.toml
+# $HOME/App/Meganimus/config/meganimus-settings.toml
 meganimus_config_dir = meganimus_dir / "config"
 meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
 
@@ -544,7 +542,7 @@ def detect_default_settings() -> dict:
         "shortcut": {
             "desktop_dir": "",
             "menu_dir": "",
-            "own_category": False,
+            "own_category": True,
             "menu_file": "",
             "directory_file": "",
         },
@@ -591,9 +589,6 @@ def detect_default_settings() -> dict:
             "snes9x_executor": "OFF",
             "snes9x_command": "",
             "snes9x_executor_args": "",
-            "umu_executor": "OFF",
-            "umu_command": "",
-            "umu_executor_args": "",
         }
     }
 
@@ -724,7 +719,7 @@ class SettingsDialog(QDialog):
         # Executors section
         executors_label = QLabel(tr("EXECUTORS"))
         self.executor_filter = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         self.executor_filter.addItems(executors)
 
         top_layout.addRow(executors_label, self.executor_filter)
@@ -981,25 +976,6 @@ class SettingsDialog(QDialog):
                     "Custom": ""
                 }
             },
-            "UMU": {
-                "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
-                ],
-                "default_command": {
-                    "Snap": "snap run umu-run",
-                    "Flatpak": "flatpak run org.openwinecomponents.umu.umu-launcher",
-                },
-                "default_args": {
-                    "Snap": "",
-                    "Flatpak": "",
-                    "AppImage": "",
-                    "Custom": ""
-                }
-            },
         }
 
         # Store widgets for each executor
@@ -1213,7 +1189,7 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
 
@@ -1281,7 +1257,7 @@ class AddPortalDialog(QDialog):
         self.show_fps_checkbox = QCheckBox(tr("SHOW_FPS_OPTION"))
         self.show_fps_checkbox.setChecked(False)
         self.fps_hud_combo = QComboBox()
-        self.fps_hud_options = [("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")), ("FPS_DXVK_HUD", tr("FPS_DXVK_HUD"))]
+        self.fps_hud_options = [("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD"))]
         for id, text in self.fps_hud_options:
             self.fps_hud_combo.addItem(text, id)
         self.fps_hud_combo.setEnabled(False)
@@ -1627,7 +1603,7 @@ class MultipleCreatePortalsDialog(QDialog):
         # Executor and combobox
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
         top_grid.addWidget(executor_label, 0, 0)
@@ -1727,7 +1703,6 @@ class MultipleCreatePortalsDialog(QDialog):
         fps_hud_combo = QComboBox()
         fps_hud_options = [
             ("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")),
-            ("FPS_DXVK_HUD", tr("FPS_DXVK_HUD"))
         ]
         for id, text in fps_hud_options:
             fps_hud_combo.addItem(text, id)
@@ -2089,7 +2064,7 @@ class MultipleEditPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of available executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         self.executor_combo.insertItem(0, tr("DO_NOT_CHANGE"))
         self.executor_combo.setCurrentIndex(0)
         for executor in executors:
@@ -2151,7 +2126,7 @@ class MultipleEditPortalDialog(QDialog):
         self.show_fps_checkbox.setTristate(True)
         self.show_fps_checkbox.setCheckState(Qt.CheckState.PartiallyChecked)
         self.fps_hud_combo = QComboBox()
-        self.fps_hud_options = [("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")), ("FPS_DXVK_HUD", tr("FPS_DXVK_HUD"))]
+        self.fps_hud_options = [("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD"))]
         for id, text in self.fps_hud_options:
             self.fps_hud_combo.addItem(text, id)
         self.fps_hud_combo.setEnabled(False)
@@ -2783,7 +2758,6 @@ class PortalInfoViewerDialog(QDialog):
 
         value_translations = {
             "FPS_GALLIUM_HUD": tr("FPS_GALLIUM_HUD"),
-            "FPS_DXVK_HUD": tr("FPS_DXVK_HUD")
         }
 
         for key, value in inv.items():
@@ -3189,11 +3163,11 @@ class ShortcutManager(QDialog):
             try:
                 dot_directory_file_path = home_dir / ".local" / "share" / "desktop-directories" / "Meganimus.directory"
                 dot_directory_file_path.parent.mkdir(parents=True, exist_ok=True)
-                
+
                 directory_content = "\n".join([
                     "[Desktop Entry]",
                     "Name=Meganimus",
-                    "Icon=meganimus"
+                    "Icon=io.github.kyuyrii.meganimus"
                 ])
                 dot_directory_file_path.write_text(directory_content, encoding="utf-8")
                 self.shortcut_manager_info["directory_file"] = str(dot_directory_file_path)
@@ -3219,7 +3193,6 @@ class ShortcutManager(QDialog):
         os.system(f'chmod +x "{desktop_dir}/"portal-*.desktop')
         os.system(f'chmod +x "{menu_dir}/"portal-*.desktop')
 
-        QMessageBox.information(self, tr("APP_NAME"), tr("SHORTCUTS_SAVED"))
         self.update_list_view()
         self.accept()
 
@@ -3234,6 +3207,8 @@ class ShortcutManager(QDialog):
 
         if os.environ.get("SNAP"):
             current_meganimus = "snap run meganimus"
+        elif os.environ.get("container") == "flatpak":
+            current_meganimus = "flatpak run io.github.kyuyrii.meganimus"
         else:
             current_meganimus = os.path.abspath(sys.argv[0])
 
@@ -3248,7 +3223,7 @@ class ShortcutManager(QDialog):
             f"Name={name}",
             f"Exec={current_meganimus}",
             f"Icon={gui_path}",
-            "StartupWMClass=meganimus",
+            "StartupWMClass=io.github.kyuyrii.meganimus",
             f"Categories={categories}",
             "Keywords=gaming;portal;",
             "Terminal=false",
@@ -3282,7 +3257,7 @@ class Meganimus(QMainWindow):
         self.portal_process = None
 
         # Add the icon to the main window
-        local_icons = ['meganimus.svg', 'Meganimus.svg']
+        local_icons = ['io.github.kyuyrii.meganimus.svg', '/snap/meganimus/current/animarium/io.github.kyuyrii.meganimus.svg']
 
         icon_set = False
         for icon_file in local_icons:
@@ -3291,8 +3266,7 @@ class Meganimus(QMainWindow):
                 icon_set = True
                 break
         if not icon_set:
-            # Fallback to system theme icons
-            for name in ['meganimus', 'Meganimus', 'applications-all']:
+            for name in ['io.github.kyuyrii.meganimus']:
                 icon = QIcon.fromTheme(name)
                 if not icon.isNull():
                     self.setWindowIcon(icon)
@@ -3523,6 +3497,8 @@ class Meganimus(QMainWindow):
         atexit.register(self.kill_portal_process_on_exit)
         self.transfer_successful = False
 
+        self.inhibit_cookie = None
+
     def show_global_context_menu(self, pos):
         global_pos = self.central_widget.mapToGlobal(pos)
         self.global_context_menu.popup(global_pos)
@@ -3630,6 +3606,14 @@ class Meganimus(QMainWindow):
         dialog.exec()
 
     def stop_execution(self):
+        if self.inhibit_cookie is not None:
+            try:
+                bus = dbus.SessionBus()
+                request = bus.get_object("org.freedesktop.portal.Desktop", str(self.inhibit_cookie))
+                dbus.Interface(request, "org.freedesktop.portal.Request").Close()
+            except:
+                pass
+            self.inhibit_cookie = None
         self.setWindowTitle(tr("APP_NAME"))
 
         if hasattr(self, "portal_process") and self.portal_process:
@@ -3702,7 +3686,6 @@ class Meganimus(QMainWindow):
         subdirs = [
             base / "config",
             base / "art",
-            base / "umu-prefix",
         ]
 
         for subdir in subdirs:
@@ -3786,7 +3769,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "UMU"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
@@ -3926,8 +3909,6 @@ class Meganimus(QMainWindow):
             if show_fps:
                 if fps_hud_type == "FPS_GALLIUM_HUD":
                     env["GALLIUM_HUD"] = "fps+cpu,frametime"
-                elif fps_hud_type == "FPS_DXVK_HUD":
-                    env["DXVK_HUD"] = "fps,gpuload,frametimes"
 
             # Extra variables
             env_vars_str = portal_data.get('env_vars', '').strip()
@@ -3936,12 +3917,6 @@ class Meganimus(QMainWindow):
                     if "=" in item:
                         key, value = item.split("=", 1)
                         env[key] = value
-
-            # Set XDG_DATA_HOME to redirect UMU data to $HOME directory.
-            if executor.lower() == "umu":
-                env['XDG_DATA_HOME'] = str(home_dir)
-                if 'WINEPREFIX' not in env:
-                    env['WINEPREFIX'] = str(home_dir / 'AppsFiles' / 'Meganimus' / 'umu-prefix')
 
             # Gamemode
             use_gamemode = portal_data.get('use_gamemode', True)
@@ -4032,7 +4007,7 @@ class Meganimus(QMainWindow):
 
             # For final command debugging
             debug_command = []
-            for var in ["LC_ALL", "LANG", "LANGUAGE", "WINEPREFIX", "GALLIUM_HUD", "DXVK_HUD"]:
+            for var in ["LC_ALL", "LANG", "LANGUAGE", "GALLIUM_HUD"]:
                 if var in env:
                     debug_command.append(f"{var}={env[var]}")
 
@@ -4051,7 +4026,13 @@ class Meganimus(QMainWindow):
                 stdout=sys.stdout,
                 stderr=sys.stderr
             )
-
+            try:
+                bus = dbus.SessionBus()
+                portal = bus.get_object("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop")
+                iface = dbus.Interface(portal, "org.freedesktop.portal.Inhibit")
+                self.inhibit_cookie = iface.Inhibit("", 8, {"reason": "Meganimus portal"})
+            except:
+                self.inhibit_cookie = None
             self.last_game = str(game_path_full)
             self.setWindowTitle(tr("PORTAL_STARTED", portal_name=portal_name))
 
@@ -4150,7 +4131,7 @@ class Meganimus(QMainWindow):
             self.portal_process = subprocess.Popen(
                 command,
                 env=env,
-                cwd=str(Path.home()),
+                cwd=str(home_dir),
                 stdout=sys.stdout,
                 stderr=sys.stderr
             )
@@ -4945,13 +4926,13 @@ if __name__ == "__main__":
 
     # Define the application ID so Wayland can find the icon.
     # We use the lowercase application name with hyphens instead of spaces.
-    app_id = tr("APP_NAME").lower().replace(' ', '-')
+    app_id = "io.github.kyuyrii.meganimus"
     app.setDesktopFileName(app_id)
 
     # Helper function to send command to already running instance
     def send_to_running_instance(message: str) -> bool:
         socket = QLocalSocket()
-        socket.connectToServer("meganimus_single_instance")
+        socket.connectToServer("io.github.kyuyrii.meganimus")
         if socket.waitForConnected(300):
             socket.write(message.encode("utf-8"))
             socket.flush()
@@ -4993,7 +4974,7 @@ if __name__ == "__main__":
 
     def is_instance_alive() -> bool:
         socket = QLocalSocket()
-        socket.connectToServer("meganimus_single_instance")
+        socket.connectToServer("io.github.kyuyrii.meganimus")
         if socket.waitForConnected(300):
             socket.write(b"--heartbeat")
             socket.flush()
@@ -5002,7 +4983,7 @@ if __name__ == "__main__":
                 socket.disconnectFromServer()
                 if response == "alive":
                     return True
-        QLocalServer.removeServer("meganimus_single_instance")
+        QLocalServer.removeServer("io.github.kyuyrii.meganimus")
         return False
 
     # If another instance is already running, send the command to it and exit
@@ -5018,7 +4999,7 @@ if __name__ == "__main__":
 
     window = Meganimus()
 
-    window.server_name = "meganimus_single_instance"
+    window.server_name = "io.github.kyuyrii.meganimus"
     window.server = QLocalServer(window)
     window.server.listen(window.server_name)
     window.server.newConnection.connect(handle_new_connection)

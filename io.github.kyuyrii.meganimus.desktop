@@ -1,8 +1,8 @@
 [Desktop Entry]
 Name=Meganimus
 Exec=meganimus
-Icon=meganimus
-StartupWMClass=meganimus
+Icon=io.github.kyuyrii.meganimus
+StartupWMClass=io.github.kyuyrii.meganimus
 Comment=A launcher for native and emulator games
 Comment[pt_BR]=Um launcher para jogos nativos e de emuladores
 Comment[es_ES]=Un lanzador para juegos nativos y emuladores
