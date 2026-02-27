@@ -33,7 +33,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.3.1"
+__version__ = "1.6.3.2"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -2870,7 +2870,7 @@ class ShortcutManager(QDialog):
         elif os.environ.get("container") == "flatpak":
             current_meganimus = "flatpak run io.github.kyuyrii.meganimus"
         elif os.environ.get("APPIMAGE"):
-            current_zordeer = os.environ.get("APPIMAGE")
+            current_meganimus = os.environ.get("APPIMAGE")
         else:
             current_meganimus = os.path.abspath(sys.argv[0])
 
