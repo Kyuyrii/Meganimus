@@ -33,7 +33,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.3.2"
+__version__ = "1.6.4"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -123,7 +123,8 @@ def tr(key, **kwargs):
 try:
     from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QToolBar, QDialog, QGridLayout,
     QLabel, QLineEdit, QHBoxLayout, QFileDialog, QComboBox, QCheckBox, QListWidgetItem, QStyleFactory, QProgressBar, QButtonGroup,
-    QSplitter, QScrollArea, QRadioButton, QAbstractItemView, QFormLayout, QTreeWidget, QTreeWidgetItem, QSystemTrayIcon, QMenu, QListView, QSpinBox, QTextEdit, QProgressDialog)
+    QSplitter, QScrollArea, QRadioButton, QAbstractItemView, QFormLayout, QTreeWidget, QTreeWidgetItem, QSystemTrayIcon, QMenu, QListView, QSpinBox, QTextEdit,
+    QProgressDialog, QTabWidget)
     from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer, QEvent, QTranslator, QLibraryInfo
     from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QPalette, QColor, QTextCharFormat, QTextCursor
     from PyQt6.QtNetwork import QLocalServer, QLocalSocket
@@ -180,7 +181,7 @@ def detect_default_settings() -> dict:
             "language": LANG if LANG else "en_US",
             "layout_mode": "classic",
             "icon_width_classic": 420,
-            "icon_width_grid": 300,
+            "icon_width_grid": 282,
             "toolbar_icon_size": 32,
             "search_bar_visible": False,
             "executor_filter_index": 0,
@@ -202,44 +203,44 @@ def detect_default_settings() -> dict:
             "sgdb_apikey": "",
         },
         "executor": {
-            "azaharplus_executor": "OFF",
-            "azaharplus_command": "",
-            "azaharplus_executor_args": "",
-            "cemu_executor": "OFF",
-            "cemu_command": "",
-            "cemu_executor_args": "",
-            "dolphin_executor": "OFF",
-            "dolphin_command": "",
-            "dolphin_executor_args": "",
-            "duckstation_executor": "OFF",
-            "duckstation_command": "",
-            "duckstation_executor_args": "",
-            "eden_executor": "OFF",
-            "eden_command": "",
-            "eden_executor_args": "",
-            "flycast_executor": "OFF",
-            "flycast_command": "",
+            "azaharplus_executor": "AppImage",
+            "azaharplus_command": "/home/*/App/Meganimus/executor/AzaharPlus.AppImage",
+            "azaharplus_executor_args": "-f",
+            "cemu_executor": "AppImage",
+            "cemu_command": "/home/*/App/Meganimus/executor/Cemu.AppImage",
+            "cemu_executor_args": "-f -g",
+            "dolphin_executor": "AppImage",
+            "dolphin_command": "/home/*/App/Meganimus/executor/Dolphin.AppImage",
+            "dolphin_executor_args": "--batch -e",
+            "duckstation_executor": "AppImage",
+            "duckstation_command": "/home/*/App/Meganimus/executor/Duckstation.AppImage",
+            "duckstation_executor_args": "-fullscreen",
+            "eden_executor": "AppImage",
+            "eden_command": "/home/*/App/Meganimus/executor/Eden.AppImage",
+            "eden_executor_args": "-f -g",
+            "flycast_executor": "AppImage",
+            "flycast_command": "/home/*/App/Meganimus/executor/Flycast.AppImage",
             "flycast_executor_args": "",
-            "melonds_executor": "OFF",
-            "melonds_command": "",
-            "melonds_executor_args": "",
-            "mgba_executor": "OFF",
-            "mgba_command": "",
-            "mgba_executor_args": "",
-            "pcsx2_executor": "OFF",
-            "pcsx2_command": "",
-            "pcsx2_executor_args": "",
-            "ppsspp_executor": "OFF",
-            "ppsspp_command": "",
-            "ppsspp_executor_args": "",
-            "rpcs3_executor": "OFF",
-            "rpcs3_command": "",
-            "rpcs3_executor_args": "",
-            "ryubing_executor": "OFF",
-            "ryubing_command": "",
-            "ryubing_executor_args": "",
-            "snes9x_executor": "OFF",
-            "snes9x_command": "",
+            "melonds_executor": "AppImage",
+            "melonds_command": "/home/*/App/Meganimus/executor/MelonDS.AppImage",
+            "melonds_executor_args": "-f",
+            "mgba_executor": "AppImage",
+            "mgba_command": "/home/*/App/Meganimus/executor/mGBA.AppImage",
+            "mgba_executor_args": "-f",
+            "pcsx2_executor": "AppImage",
+            "pcsx2_command": "/home/*/App/Meganimus/executor/PCSX2.AppImage",
+            "pcsx2_executor_args": "-fullscreen",
+            "ppsspp_executor": "AppImage",
+            "ppsspp_command": "/home/*/App/Meganimus/executor/PPSSPP.AppImage",
+            "ppsspp_executor_args": "--fullscreen --pause-menu-exit",
+            "rpcs3_executor": "AppImage",
+            "rpcs3_command": "/home/*/App/Meganimus/executor/RPCS3.AppImage",
+            "rpcs3_executor_args": "--no-gui --fullscreen",
+            "ryubing_executor": "AppImage",
+            "ryubing_command": "/home/*/App/Meganimus/executor/Ryubing.AppImage",
+            "ryubing_executor_args": "-f",
+            "snes9x_executor": "AppImage",
+            "snes9x_command": "/home/*/App/Meganimus/executor/Snes9x.AppImage",
             "snes9x_executor_args": "",
         }
     }
@@ -366,267 +367,163 @@ class SettingsDialog(QDialog):
 
         layout.addLayout(top_layout)
 
-        self.setLayout(layout)
-
-        # Executors section
-        executors_label = QLabel(tr("EXECUTORS"))
-        self.executor_filter = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
-        self.executor_filter.addItems(executors)
-
-        top_layout.addRow(executors_label, self.executor_filter)
-
-        self.executor_filter.currentIndexChanged.connect(self.show_selected_executor)
-
-        self.executor_container = QVBoxLayout()
-        layout.addLayout(self.executor_container)
+        # Creates the QTabWidget for the executors
+        tabs = QTabWidget()
+        layout.addWidget(tabs)
 
         # Configuring executors and options
         self.executors_config = {
             "AzaharPlus": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run azaharplus-emulator",
-                    "Flatpak": "",
                 },
-                "default_args": {
-                    "Snap": "-f",
-                    "Flatpak": "-f",
-                    "AppImage": "-f",
-                    "Custom": ""
-                }
+                "default_args": "-f",
             },
             "Cemu": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run cemu-emulator",
                     "Flatpak": "flatpak run info.cemu.Cemu",
                 },
-                "default_args": {
-                    "Snap": "-f -g",
-                    "Flatpak": "-f -g",
-                    "AppImage": "-f -g",
-                    "Custom": ""
-                }
+                "default_args": "-f -g",
             },
             "Dolphin": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run dolphin-emulator-kyu",
                     "Flatpak": "flatpak run org.DolphinEmu.dolphin-emu",
                 },
-                "default_args": {
-                    "Snap": "--batch -e",
-                    "Flatpak": "--batch -e",
-                    "AppImage": "--batch -e",
-                    "Custom": ""
-                }
+                "default_args": "--batch -e",
             },
             "Duckstation": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run duckstation-gpl",
                     "Flatpak": "flatpak run org.duckstation.DuckStation",
                 },
-                "default_args": {
-                    "Snap": "-fullscreen",
-                    "Flatpak": "-fullscreen",
-                    "AppImage": "-fullscreen",
-                    "Custom": ""
-                }
+                "default_args": "-fullscreen",
             },
             "Eden": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run eden-emulator",
-                    "Flatpak": "",
                 },
-                "default_args": {
-                    "Snap": "-f -g",
-                    "Flatpak": "-f -g",
-                    "AppImage": "-f -g",
-                    "Custom": ""
-                }
+                "default_args": "-f -g",
             },
             "Flycast": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run flycast-emulator",
                     "Flatpak": "flatpak run org.flycast.Flycast",
                 },
-                "default_args": {
-                    "Snap": "",
-                    "Flatpak": "",
-                    "AppImage": "",
-                    "Custom": ""
-                }
+                "default_args": "",
             },
             "MelonDS": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run melonds-emulator",
                     "Flatpak": "flatpak run net.kuribo64.melonDS",
                 },
-                "default_args": {
-                    "Snap": "-f",
-                    "Flatpak": "-f",
-                    "AppImage": "-f",
-                    "Custom": ""
-                }
+                "default_args": "-f",
             },
             "mGBA": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run mgba-emulator",
                     "Flatpak": "flatpak run io.mgba.mGBA",
                 },
-                "default_args": {
-                    "Snap": "-f",
-                    "Flatpak": "-f",
-                    "AppImage": "-f",
-                    "Custom": ""
-                }
+                "default_args": "-f",
             },
             "PCSX2": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run pcsx2-emulator",
                     "Flatpak": "flatpak run net.pcsx2.PCSX2",
                 },
-                "default_args": {
-                    "Snap": "-fullscreen",
-                    "Flatpak": "-fullscreen",
-                    "AppImage": "-fullscreen",
-                    "Custom": ""
-                }
+                "default_args": "-fullscreen",
             },
             "PPSSPP": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run ppsspp-emulator",
                     "Flatpak": "flatpak run org.ppsspp.PPSSPP",
                 },
-                "default_args": {
-                    "Snap": "--fullscreen --pause-menu-exit",
-                    "Flatpak": "--fullscreen --pause-menu-exit",
-                    "AppImage": "--fullscreen --pause-menu-exit",
-                    "Custom": ""
-                }
+                "default_args": "--fullscreen --pause-menu-exit",
             },
             "RPCS3": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run rpcs3-emulator",
                     "Flatpak": "flatpak run net.rpcs3.RPCS3",
                 },
-                "default_args": {
-                    "Snap": "--no-gui --fullscreen",
-                    "Flatpak": "--no-gui --fullscreen",
-                    "AppImage": "--no-gui --fullscreen",
-                    "Custom": ""
-                }
+                "default_args": "--no-gui --fullscreen",
             },
             "Ryubing": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run ryubing-emulator",
                     "Flatpak": "flatpak run io.github.ryubing.Ryujinx",
                 },
-                "default_args": {
-                    "Snap": "-f",
-                    "Flatpak": "-f",
-                    "AppImage": "-f",
-                    "Custom": ""
-                }
+                "default_args": "-f",
             },
             "Snes9x": {
                 "options": [
-                    (tr("SELECT_VERSION"), "OFF"),
+                    (tr("APPIMAGE"), "AppImage"),
                     ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
-                    (tr("APPIMAGE_AND_EXECUTABLE"), "AppImage"),
-                    (tr("CUSTOM_COMMAND"), "Custom"),
                 ],
                 "default_command": {
                     "Snap": "snap run snes9x-gtk",
                     "Flatpak": "flatpak run com.snes9x.Snes9x",
                 },
-                "default_args": {
-                    "Snap": "",
-                    "Flatpak": "",
-                    "AppImage": "",
-                    "Custom": ""
-                }
+                "default_args": "",
             },
         }
 
@@ -634,10 +531,11 @@ class SettingsDialog(QDialog):
         self.executor_widgets = {}
 
         for executor_name, config in self.executors_config.items():
-            container_widget = QWidget()
-            tab_layout = QVBoxLayout(container_widget)
+            # Executor tab
+            tab = QWidget()
+            tab_layout = QVBoxLayout(tab)
 
-            # Version
+            # Version/Type selection
             version_layout = QHBoxLayout()
             version_label = QLabel(tr("EXECUTOR_VERSION"))
             combo = QComboBox()
@@ -647,17 +545,17 @@ class SettingsDialog(QDialog):
             version_layout.addWidget(combo, stretch=1)
             tab_layout.addLayout(version_layout)
 
-            # Command + Executor arguments
-            form_layout = QFormLayout()
-
             # Command
+            form_layout = QFormLayout()
             command_label = QLabel(tr("EXECUTOR_COMMAND"))
             path_input = QLineEdit()
             form_layout.addRow(command_label, path_input)
 
-            # Executor arguments
+            # Args
             args_label = QLabel(tr("EXECUTOR_ARGS"))
             args_input = QLineEdit()
+            args_input.setText(config["default_args"])
+            args_input.setReadOnly(True)
             form_layout.addRow(args_label, args_input)
 
             tab_layout.addLayout(form_layout)
@@ -670,13 +568,11 @@ class SettingsDialog(QDialog):
             button_layout.addWidget(browse_btn)
             tab_layout.addLayout(button_layout)
 
-            container_widget.setLayout(tab_layout)
-            container_widget.setVisible(False)
-            self.executor_container.addWidget(container_widget)
+            # Add tab to tab widget
+            tabs.addTab(tab, executor_name)
 
             # Save widgets for later access
             self.executor_widgets[executor_name] = {
-                "widget": container_widget,
                 "combo": combo,
                 "path_input": path_input,
                 "args_input": args_input,
@@ -691,23 +587,14 @@ class SettingsDialog(QDialog):
             browse_btn.clicked.connect(partial(self.browse_executor, executor_name))
 
             # Initializes saved values
-            saved_executor = self.settings["executor"].get(f"{executor_name.lower()}_executor", "OFF")
+            saved_executor = self.settings["executor"].get(f"{executor_name.lower()}_executor", "AppImage")
             saved_command = self.settings["executor"].get(f"{executor_name.lower()}_command", "")
 
-            index = next((i for i in range(combo.count()) if combo.itemData(i) == saved_executor), 0)
+            # Find index for saved executor
+            index = next((i for i in range(combo.count()) if combo.itemData(i) == saved_executor), 
+                        next((i for i in range(combo.count()) if combo.itemData(i) == "AppImage"), 0))
             combo.setCurrentIndex(index)
             self.update_executor_command(executor_name, combo.itemData(index))
-
-            widgets = self.executor_widgets[executor_name]
-            default_args = self.executors_config[executor_name].get("default_args", {})
-            saved_args = self.settings["executor"].get(f"{executor_name.lower()}_executor_args", "")
-
-            if combo.itemData(index) in default_args and not saved_args:
-                widgets["args_input"].setText(default_args[combo.itemData(index)])
-            else:
-                widgets["args_input"].setText(saved_args)
-
-        self.show_selected_executor(self.executor_filter.currentIndex())
 
         # Save Button
         save_btn = QPushButton(tr("SAVE_BUTTON"))
@@ -723,52 +610,24 @@ class SettingsDialog(QDialog):
             return
         super().keyPressEvent(event)
 
-    def show_selected_executor(self, index):
-        selected_executor = self.executor_filter.currentText()
-        for name, widgets in self.executor_widgets.items():
-            widgets["widget"].setVisible(name == selected_executor)
-
     def update_executor_command(self, executor_name, choice):
         widgets = self.executor_widgets[executor_name]
         path_input = widgets["path_input"]
-        args_input = widgets["args_input"]
         browse_btn = widgets["browse_btn"]
 
         default_cmds = self.executors_config[executor_name].get("default_command", {})
-        default_args = self.executors_config[executor_name].get("default_args", {})
-
-        saved_executor_type = self.settings["executor"].get(f"{executor_name.lower()}_executor", "OFF")
+        saved_executor_type = self.settings["executor"].get(f"{executor_name.lower()}_executor", "AppImage")
         saved_command = self.settings["executor"].get(f"{executor_name.lower()}_command", "")
-        saved_args = self.settings["executor"].get(f"{executor_name.lower()}_executor_args", "")
 
         # Command
         if choice == "AppImage":
             path_input.setText(saved_command if saved_executor_type == "AppImage" else "")
             path_input.setReadOnly(False)
             browse_btn.setEnabled(True)
-        elif choice == "Custom":
-            path_input.setText(saved_command if saved_executor_type == "Custom" else "")
-            path_input.setReadOnly(False)
-            browse_btn.setEnabled(True)
         elif choice in default_cmds:  # Snap / Flatpak
             path_input.setText(default_cmds[choice])
             path_input.setReadOnly(True)
             browse_btn.setEnabled(False)
-        else:  # OFF / SELECT_VERSION
-            path_input.setText("")
-            path_input.setReadOnly(True)
-            browse_btn.setEnabled(False)
-
-        # Arguments
-        if choice in ("Snap", "Flatpak", "AppImage"):
-            args_input.setText(default_args.get(choice, ""))
-            args_input.setReadOnly(True)
-        elif choice == "Custom":
-            args_input.setText(saved_args if saved_executor_type == "Custom" else "")
-            args_input.setReadOnly(False)
-        else:
-            args_input.setText("")
-            args_input.setReadOnly(True)
 
     def browse_executor(self, executor_name):
         widgets = self.executor_widgets[executor_name]
@@ -785,8 +644,7 @@ class SettingsDialog(QDialog):
             self.parent().start_executor(
                 executor_name,
                 executor_type=executor_type,
-                executor_command_str=executor_command_str
-            )
+                executor_command_str=executor_command_str)
 
     def save_and_close(self):
         self.settings["design"]["qt_style"] = self.style_combo.currentText()
@@ -798,14 +656,13 @@ class SettingsDialog(QDialog):
         # Save the icon widths
         self.settings["design"]["icon_width_classic"] = self.classic_width_input.value()
         self.settings["design"]["icon_width_grid"] = self.grid_width_input.value()
-
         self.settings["design"]["toolbar_icon_size"] = self.toolbar_icon_size_input.value()
 
         # Save all executors dynamically
         for executor_name, widgets in self.executor_widgets.items():
             self.settings["executor"][f"{executor_name.lower()}_executor"] = widgets["combo"].currentData()
             self.settings["executor"][f"{executor_name.lower()}_command"] = widgets["path_input"].text()
-            self.settings["executor"][f"{executor_name.lower()}_executor_args"] = widgets["args_input"].text()
+            self.settings["executor"][f"{executor_name.lower()}_executor_args"] = self.executors_config[executor_name]["default_args"]
 
         save_settings(self.settings)
         QMessageBox.information(
@@ -895,7 +752,7 @@ class AddPortalDialog(QDialog):
         # Language/location
         self.language_label = QLabel(tr("PORTAL_LANGUAGE"))
         self.language_input = QComboBox()
-        self.language_input.addItems([tr("PLACEHOLDER_FOR_LANGUAGE")] + PORTAL_LOCALE_OPTIONS)
+        self.language_input.addItems([tr("INDEFINITE")] + PORTAL_LOCALE_OPTIONS)
         self.main_layout.addWidget(self.language_label, 5, 0)
         self.main_layout.addWidget(self.language_input, 5, 1, 1, 2)
 
@@ -1003,33 +860,27 @@ class AddPortalDialog(QDialog):
             self.game_path_input.setText(folder_path)
 
     def select_portal_art(self):
-        heroes_dir = Path(self.parent().meganimus_dir) / "sgdb" / "heroes"
-        heroes_dir.mkdir(parents=True, exist_ok=True)
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             tr("SELECT_PORTAL_ART"),
-            str(heroes_dir),
-            tr("IMAGE_FILTER")
-        )
+            str(home_dir),
+            tr("IMAGE_FILTER"))
         if file_path:
             self.portal_art_input.setText(file_path)
 
     def select_portal_gui(self):
-        icons_dir = Path(self.parent().meganimus_dir) / "sgdb" / "icons"
-        icons_dir.mkdir(parents=True, exist_ok=True)
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             tr("SELECT_PORTAL_GUI"),
-            str(icons_dir),
-            tr("IMAGE_FILTER")
-        )
+            str(home_dir),
+            tr("IMAGE_FILTER"))
         if file_path:
             self.portal_gui_input.setText(file_path)
 
     def get_form_data(self):
         env_vars_text = self.env_vars_input.text().strip()
         selected_lang = self.language_input.currentText()
-        if selected_lang == tr("PLACEHOLDER_FOR_LANGUAGE"):
+        if selected_lang == tr("INDEFINITE"):
             selected_lang = ""
 
         fps_hud_type = self.fps_hud_combo.currentData()
@@ -1255,7 +1106,7 @@ class MultipleCreatePortalsDialog(QDialog):
         # Language and combobox
         language_label = QLabel(tr("PORTAL_LANGUAGE"))
         self.language_input = QComboBox()
-        self.language_input.addItems([tr("PLACEHOLDER_FOR_LANGUAGE")] + PORTAL_LOCALE_OPTIONS)
+        self.language_input.addItems([tr("INDEFINITE")] + PORTAL_LOCALE_OPTIONS)
         top_grid.addWidget(language_label, 1, 0)
         top_grid.addWidget(self.language_input, 1, 1)
 
@@ -1423,7 +1274,7 @@ class MultipleCreatePortalsDialog(QDialog):
                 return
 
         selected_lang = self.language_input.currentText()
-        if selected_lang == tr("PLACEHOLDER_FOR_LANGUAGE"):
+        if selected_lang == tr("INDEFINITE"):
             selected_lang = ""
 
         for i in range(self.file_list.topLevelItemCount()):
@@ -1744,7 +1595,7 @@ class MultipleEditPortalDialog(QDialog):
         self.lang_combo = QComboBox()
         self.lang_combo.addItems([
             tr("DO_NOT_CHANGE"),
-            tr("PLACEHOLDER_FOR_LANGUAGE")
+            tr("INDEFINITE")
         ] + PORTAL_LOCALE_OPTIONS)
         self.lang_combo.setCurrentIndex(0)
         right_layout.addWidget(self.lang_label, row, 0)
@@ -1883,28 +1734,20 @@ class MultipleEditPortalDialog(QDialog):
             self.game_input.setText(file_path)
 
     def select_portal_art(self):
-        heroes_dir = meganimus_dir / "sgdb" / "heroes"
-        heroes_dir.mkdir(parents=True, exist_ok=True)
-
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             tr("SELECT_PORTAL_ART"),
-            str(heroes_dir),
-            tr("IMAGE_FILTER")
-        )
+            str(home_dir),
+            tr("IMAGE_FILTER"))
         if file_path:
             self.art_input.setText(file_path)
 
     def select_portal_gui(self):
-        icons_dir = meganimus_dir / "sgdb" / "icons"
-        icons_dir.mkdir(parents=True, exist_ok=True)
-
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             tr("SELECT_PORTAL_GUI"),
-            str(icons_dir),
-            tr("IMAGE_FILTER")
-        )
+            str(home_dir),
+            tr("IMAGE_FILTER"))
         if file_path:
             self.gui_input.setText(file_path)
 
@@ -2080,7 +1923,7 @@ class MultipleEditPortalDialog(QDialog):
             # Language
             lang = self.lang_combo.currentText()
             if lang != tr("DO_NOT_CHANGE"):
-                data["language"] = "" if lang == tr("PLACEHOLDER_FOR_LANGUAGE") else lang
+                data["language"] = "" if lang == tr("INDEFINITE") else lang
 
             # FPS HUD
             if self.show_fps_checkbox.checkState() == Qt.CheckState.Checked:
@@ -3080,7 +2923,7 @@ class Meganimus(QMainWindow):
 
         self.main_layout.insertWidget(0, self.search_widget)
 
-        self.fix_portal_paths()
+        self.fix_meganimus_paths()
 
         self.load_portals()
 
@@ -3206,15 +3049,6 @@ class Meganimus(QMainWindow):
         settings["design"]["search_bar_visible"] = self.search_bar.isVisible()
         settings["design"]["executor_filter_index"] = self.executor_filter.currentIndex()
         settings["design"]["toolbar_visible"] = self.toolbar.isVisible()
-        area = self.toolBarArea(self.toolbar)
-        if area == Qt.ToolBarArea.TopToolBarArea:
-            settings["design"]["toolbar_position"] = "top"
-        elif area == Qt.ToolBarArea.LeftToolBarArea:
-            settings["design"]["toolbar_position"] = "left"
-        elif area == Qt.ToolBarArea.RightToolBarArea:
-            settings["design"]["toolbar_position"] = "right"
-        elif area == Qt.ToolBarArea.BottomToolBarArea:
-            settings["design"]["toolbar_position"] = "bottom"
         settings["window"]["windowSize"] = [self.size().width(), self.size().height()]
         settings["window"]["isMaximized"] = self.isMaximized()
         settings["window"]["isFullScreen"] = self.isFullScreen()
@@ -3336,6 +3170,19 @@ class Meganimus(QMainWindow):
         subdirs = [
             base / "config",
             base / "art",
+            base / "executor",
+            base / "executor" / "Cemu.AppImage.home",
+            base / "executor" / "Dolphin.AppImage.home",
+            base / "executor" / "Duckstation.AppImage.home",
+            base / "executor" / "Eden.AppImage.home",
+            base / "executor" / "Flycast.AppImage.home",
+            base / "executor" / "MelonDS.AppImage.home",
+            base / "executor" / "mGBA.AppImage.home",
+            base / "executor" / "PCSX2.AppImage.home",
+            base / "executor" / "PPSSPP.AppImage.home",
+            base / "executor" / "RPCS3.AppImage.home",
+            base / "executor" / "Ryubing.AppImage.home",
+            base / "executor" / "Snes9x.AppImage.home",
         ]
 
         for subdir in subdirs:
@@ -3433,17 +3280,28 @@ class Meganimus(QMainWindow):
         else:
             self.executor_filter.setCurrentIndex(0)
 
-    def fix_portal_paths(self):
-        # Fix paths in all portals if they don't match current meganimus_dir
+    def fix_meganimus_paths(self):
+        # Fix paths in .toml files if they don't match current meganimus_dir
         current_base = str(meganimus_dir).replace('/App/Meganimus', '')
 
-        for toml_file in meganimus_config_dir.glob("portal-info-*.toml"):
+        for toml_file in meganimus_config_dir.glob("*.toml"):
             try:
                 with open(toml_file, 'r+', encoding='utf-8') as f:
                     data = toml.load(f)
                     modified = False
                     
-                    for field in ['exec_path', 'prefix_path', 'art_path', 'gui_path']:
+                    # Handle meganimus-settings.toml executor commands
+                    if toml_file.name == "meganimus-settings.toml" and 'executor' in data:
+                        executor_data = data['executor']
+                        for key in executor_data:
+                            if key.endswith('_command') and '/App/Meganimus/' in executor_data[key]:
+                                old_base = executor_data[key].split('/App/Meganimus/')[0]
+                                if old_base != current_base:
+                                    executor_data[key] = executor_data[key].replace(old_base, current_base, 1)
+                                    modified = True
+                    
+                    # Handle portal files
+                    for field in ['game_path', 'art_path', 'gui_path']:
                         if field in data and '/App/Meganimus/' in data[field]:
                             old_base = data[field].split('/App/Meganimus/')[0]
                             if old_base != current_base:
@@ -3515,14 +3373,7 @@ class Meganimus(QMainWindow):
             game_path_full = Path(portal_data['game_path'])
             executor = portal_data.get("executor", "Linux")
 
-            executor_type = settings["executor"].get(f"{executor.lower()}_executor", "OFF")
-            if executor != "Linux" and executor_type == "OFF":
-                QMessageBox.warning(
-                    None,
-                    tr("APP_NAME"),
-                    tr("EXECUTOR_NOT_CONFIGURED", executor=executor)
-                )
-                return
+            executor_type = settings["executor"].get(f"{executor.lower()}_executor", "AppImage")
 
             # Check if the game path exists.
             if not game_path_full.exists():
@@ -3621,43 +3472,40 @@ class Meganimus(QMainWindow):
                     return False
 
             def build_executor_command(executor, game_path):
-                executor_type = settings["executor"].get(f"{executor.lower()}_executor", "OFF")
+                executor_type = settings["executor"].get(f"{executor.lower()}_executor", "AppImage")
                 executor_command_str = settings["executor"].get(f"{executor.lower()}_command", "").strip()
                 executor_args_str = settings["executor"].get(f"{executor.lower()}_executor_args", "").strip()
 
                 # Linux
-                if executor == "Linux" or executor_type == "OFF":
+                if executor == "Linux":
                     return [str(game_path)]
 
-                # Custom / AppImage
-                if not executor_command_str:
-                    if executor_type == "Custom":
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_COMMAND_NOT_SET"))
-                    else:  # AppImage
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET"))
-                    return None
-
+                # AppImage
                 if executor_type == "AppImage":
+                    if not executor_command_str:
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET", executor=executor))
+                        return None
                     executor_path = Path(executor_command_str)
                     if not executor_path.exists():
                         QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_APPIMAGE_NOT_FOUND", path=str(executor_path)))
                         return None
                     cmd = [str(executor_path)]
-                else:
-                    cmd = executor_command_str.split()
 
-                # Check if the selected Snap or Flatpak exists.
-                if executor_type == "Snap":
+                # Snap
+                elif executor_type == "Snap":
                     snap_name = executor_command_str.split()[2] if executor_command_str.startswith("snap run") else executor
                     if not snap_exists(snap_name):
                         QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_SNAP_NOT_FOUND", name=snap_name))
                         return None
+                    cmd = executor_command_str.split()
 
+                # Flatpak
                 elif executor_type == "Flatpak":
                     flatpak_name = executor_command_str.split()[2] if executor_command_str.startswith("flatpak run") else executor
                     if not flatpak_exists(flatpak_name):
                         QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_FLATPAK_NOT_FOUND", name=flatpak_name))
                         return None
+                    cmd = executor_command_str.split()
 
                 if executor_args_str:
                     cmd += shlex.split(executor_args_str)
@@ -3737,37 +3585,22 @@ class Meganimus(QMainWindow):
                 return
 
         if executor_type is None:
-            executor_type = settings["executor"].get(f"{executor_name.lower()}_executor", "OFF")
+            executor_type = settings["executor"].get(f"{executor_name.lower()}_executor", "AppImage")
         if executor_command_str is None:
             executor_command_str = settings["executor"].get(f"{executor_name.lower()}_command", "").strip()
 
         print(tr("STARTING_PORTAL", name=executor_name))
 
-        if executor_type == "OFF" or not executor_type:
-            QMessageBox.warning(
-                None,
-                tr("APP_NAME"),
-                tr("EXECUTOR_VERSION_NOT_SELECTED", executor=executor_name)
-            )
-            return
-
-        # Custom / AppImage
-        if executor_type in ("Custom", "AppImage"):
+        # AppImage
+        if executor_type == "AppImage":
             if not executor_command_str:
-                if executor_type == "Custom":
-                    QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_COMMAND_NOT_SET"))
-                else:  # AppImage
-                    QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET"))
+                QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET", executor=executor_name))
                 return None
-
-            if executor_type == "AppImage":
-                executor_path = Path(executor_command_str)
-                if not executor_path.exists():
-                    QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_APPIMAGE_NOT_FOUND", path=str(executor_path)))
-                    return None
-                command = [str(executor_path)]
-            else:  # Custom
-                command = executor_command_str.split()
+            executor_path = Path(executor_command_str)
+            if not executor_path.exists():
+                QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_APPIMAGE_NOT_FOUND", path=str(executor_path)))
+                return None
+            command = [str(executor_path)]
 
         elif executor_type == "Snap":
             snap_name = executor_command_str.split()[2] if executor_command_str.startswith("snap run") else executor_name
@@ -3788,7 +3621,11 @@ class Meganimus(QMainWindow):
             command = executor_command_str.split()
 
         else:
-            command = [executor_name]
+            QMessageBox.warning(
+                None,
+                tr("APP_NAME"),
+                tr("EXECUTOR_VERSION_NOT_SELECTED", executor=executor_name))
+            return
 
         env = os.environ.copy()
         debug_command = command.copy()
