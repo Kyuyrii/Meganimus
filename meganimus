@@ -33,7 +33,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.4"
+__version__ = "1.6.4.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -125,7 +125,7 @@ try:
     QLabel, QLineEdit, QHBoxLayout, QFileDialog, QComboBox, QCheckBox, QListWidgetItem, QStyleFactory, QProgressBar, QButtonGroup,
     QSplitter, QScrollArea, QRadioButton, QAbstractItemView, QFormLayout, QTreeWidget, QTreeWidgetItem, QSystemTrayIcon, QMenu, QListView, QSpinBox, QTextEdit,
     QProgressDialog, QTabWidget)
-    from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer, QEvent, QTranslator, QLibraryInfo
+    from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer, QEvent, QTranslator, QLibraryInfo, QEventLoop
     from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QPalette, QColor, QTextCharFormat, QTextCursor
     from PyQt6.QtNetwork import QLocalServer, QLocalSocket
     print("Using PyQt6")
@@ -381,7 +381,7 @@ class SettingsDialog(QDialog):
                 "default_command": {
                     "Snap": "snap run azaharplus-emulator",
                 },
-                "default_args": "-f",
+                "executor_args": "-f",
             },
             "Cemu": {
                 "options": [
@@ -393,7 +393,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run cemu-emulator",
                     "Flatpak": "flatpak run info.cemu.Cemu",
                 },
-                "default_args": "-f -g",
+                "executor_args": "-f -g",
             },
             "Dolphin": {
                 "options": [
@@ -405,7 +405,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run dolphin-emulator-kyu",
                     "Flatpak": "flatpak run org.DolphinEmu.dolphin-emu",
                 },
-                "default_args": "--batch -e",
+                "executor_args": "--batch -e",
             },
             "Duckstation": {
                 "options": [
@@ -417,7 +417,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run duckstation-gpl",
                     "Flatpak": "flatpak run org.duckstation.DuckStation",
                 },
-                "default_args": "-fullscreen",
+                "executor_args": "-fullscreen",
             },
             "Eden": {
                 "options": [
@@ -427,7 +427,7 @@ class SettingsDialog(QDialog):
                 "default_command": {
                     "Snap": "snap run eden-emulator",
                 },
-                "default_args": "-f -g",
+                "executor_args": "-f -g",
             },
             "Flycast": {
                 "options": [
@@ -439,7 +439,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run flycast-emulator",
                     "Flatpak": "flatpak run org.flycast.Flycast",
                 },
-                "default_args": "",
+                "executor_args": "",
             },
             "MelonDS": {
                 "options": [
@@ -451,7 +451,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run melonds-emulator",
                     "Flatpak": "flatpak run net.kuribo64.melonDS",
                 },
-                "default_args": "-f",
+                "executor_args": "-f",
             },
             "mGBA": {
                 "options": [
@@ -463,7 +463,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run mgba-emulator",
                     "Flatpak": "flatpak run io.mgba.mGBA",
                 },
-                "default_args": "-f",
+                "executor_args": "-f",
             },
             "PCSX2": {
                 "options": [
@@ -475,7 +475,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run pcsx2-emulator",
                     "Flatpak": "flatpak run net.pcsx2.PCSX2",
                 },
-                "default_args": "-fullscreen",
+                "executor_args": "-fullscreen",
             },
             "PPSSPP": {
                 "options": [
@@ -487,7 +487,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run ppsspp-emulator",
                     "Flatpak": "flatpak run org.ppsspp.PPSSPP",
                 },
-                "default_args": "--fullscreen --pause-menu-exit",
+                "executor_args": "--fullscreen --pause-menu-exit",
             },
             "RPCS3": {
                 "options": [
@@ -499,7 +499,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run rpcs3-emulator",
                     "Flatpak": "flatpak run net.rpcs3.RPCS3",
                 },
-                "default_args": "--no-gui --fullscreen",
+                "executor_args": "--no-gui --fullscreen",
             },
             "Ryubing": {
                 "options": [
@@ -511,7 +511,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run ryubing-emulator",
                     "Flatpak": "flatpak run io.github.ryubing.Ryujinx",
                 },
-                "default_args": "-f",
+                "executor_args": "-f",
             },
             "Snes9x": {
                 "options": [
@@ -523,7 +523,7 @@ class SettingsDialog(QDialog):
                     "Snap": "snap run snes9x-gtk",
                     "Flatpak": "flatpak run com.snes9x.Snes9x",
                 },
-                "default_args": "",
+                "executor_args": "",
             },
         }
 
@@ -554,7 +554,7 @@ class SettingsDialog(QDialog):
             # Args
             args_label = QLabel(tr("EXECUTOR_ARGS"))
             args_input = QLineEdit()
-            args_input.setText(config["default_args"])
+            args_input.setText(config["executor_args"])
             args_input.setReadOnly(True)
             form_layout.addRow(args_label, args_input)
 
@@ -662,7 +662,7 @@ class SettingsDialog(QDialog):
         for executor_name, widgets in self.executor_widgets.items():
             self.settings["executor"][f"{executor_name.lower()}_executor"] = widgets["combo"].currentData()
             self.settings["executor"][f"{executor_name.lower()}_command"] = widgets["path_input"].text()
-            self.settings["executor"][f"{executor_name.lower()}_executor_args"] = self.executors_config[executor_name]["default_args"]
+            self.settings["executor"][f"{executor_name.lower()}_executor_args"] = self.executors_config[executor_name]["executor_args"]
 
         save_settings(self.settings)
         QMessageBox.information(
@@ -1657,10 +1657,10 @@ class MultipleEditPortalDialog(QDialog):
     # Auxiliary functions
 
     # Select or deselect innovations listed in the Portal Viewer.
-    def set_checked_state(self, inv_name, state: bool):
+    def set_checked_state(self, portal_name, state: bool):
         for checkbox in self.portal_checkboxes.values():
             try:
-                if checkbox.text() == inv_name:
+                if checkbox.text() == portal_name:
                     checkbox.setChecked(state)
             except Exception:
                 continue
@@ -3171,6 +3171,7 @@ class Meganimus(QMainWindow):
             base / "config",
             base / "art",
             base / "executor",
+            base / "executor" / "AzaharPlus.AppImage.home",
             base / "executor" / "Cemu.AppImage.home",
             base / "executor" / "Dolphin.AppImage.home",
             base / "executor" / "Duckstation.AppImage.home",
@@ -3415,7 +3416,11 @@ class Meganimus(QMainWindow):
                 game_path_full = ps3_game_path
 
             # Initialize env with system copy
-            env = os.environ.copy()
+            if hasattr(sys, '_MEIPASS'):
+                env = os.environ.copy()
+                env.pop("LD_LIBRARY_PATH", None)
+            else:
+                env = os.environ.copy()
 
             # Language/Locale
             language = portal_data.get('language', '').strip()
@@ -3627,7 +3632,11 @@ class Meganimus(QMainWindow):
                 tr("EXECUTOR_VERSION_NOT_SELECTED", executor=executor_name))
             return
 
-        env = os.environ.copy()
+        if hasattr(sys, '_MEIPASS'):
+            env = os.environ.copy()
+            env.pop("LD_LIBRARY_PATH", None)
+        else:
+            env = os.environ.copy()
         debug_command = command.copy()
         print(tr("RUNNING_COMMAND", command=" ".join(debug_command)))
 
@@ -3641,7 +3650,7 @@ class Meganimus(QMainWindow):
             )
             self.setWindowTitle(tr("PORTAL_STARTED", portal_name=executor_name))
         except Exception as e:
-            QMessageBox.critical(None, tr("APP_NAME"), f"{tr("FAILED_TO_START")}: {e}")
+            QMessageBox.critical(None, tr("APP_NAME"), tr("FAILED_TO_START", error=e))
             return
 
         time.sleep(2)
@@ -3718,16 +3727,11 @@ class Meganimus(QMainWindow):
         self.run_sgdb_auto_transfer()
 
     def run_sgdb_auto_transfer(self):
-        def get_score(item):
-            return item.get("score", 0)
-
         settings = load_settings()
         api_key = settings["other"].get("sgdb_apikey", "").strip()
         if not api_key:
             QMessageBox.warning(self, tr("APP_NAME"), tr("API_KEY_SAVE_FIRST"))
             return
-
-        headers = {"Authorization": f"Bearer {api_key}"}
 
         if not any(meganimus_config_dir.glob("portal-info-*.toml")):
             QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
@@ -3738,15 +3742,15 @@ class Meganimus(QMainWindow):
         for toml_file in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 with open(toml_file, "r", encoding="utf-8") as fh:
-                    inv = toml.load(fh)
-                inv_name = inv.get("name") or inv.get("display_name") or inv.get("id")
-                art_path = inv.get("art_path", "")
-                gui_path = inv.get("gui_path", "")
+                    portal = toml.load(fh)
+                portal_name = portal.get("name") or portal.get("display_name") or portal.get("id")
+                art_path = portal.get("art_path", "")
+                gui_path = portal.get("gui_path", "")
                 # Also includes cases where paths are filled in but the files do not exist
                 art_missing = not art_path or not Path(art_path).exists()
                 gui_missing = not gui_path or not Path(gui_path).exists()
-                if inv_name and (art_missing or gui_missing):
-                    portals.append((inv_name, toml_file))
+                if portal_name and (art_missing or gui_missing):
+                    portals.append((portal_name, toml_file))
             except Exception:
                 continue
 
@@ -3788,21 +3792,27 @@ class Meganimus(QMainWindow):
         art_dir.mkdir(parents=True, exist_ok=True)
         gui_dir.mkdir(parents=True, exist_ok=True)
 
+        # Cache directories
+        heroes_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "sgdb_heroes"
+        icons_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "sgdb_icons"
+        heroes_tmp_dir.mkdir(parents=True, exist_ok=True)
+        icons_tmp_dir.mkdir(parents=True, exist_ok=True)
+
         completed = 0
         downloads = []  # Stores the hero and icon paths before copying
 
-        for inv_name, toml_file in portals:
+        for portal_name, toml_file in portals:
             if self._cancel_auto or progress_dialog.wasCanceled():
                 break
 
-            hero_saved_path = None
-            icon_saved_path = None
             hero_cache_path = None
             icon_cache_path = None
 
             try:
                 # Search on SteamGridDB
-                search_url = f"https://www.steamgriddb.com/api/v2/search/autocomplete/{inv_name}"
+                search_url = f"https://www.steamgriddb.com/api/v2/search/autocomplete/{portal_name}"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                
                 with requests.get(search_url, headers=headers, timeout=15) as resp:
                     resp.raise_for_status()
                     data = resp.json().get("data", [])
@@ -3817,86 +3827,109 @@ class Meganimus(QMainWindow):
                 game_id = game.get("id")
                 steam_game_name = game.get("name") or str(game_id)
 
-                # Download the hero
-                try:
-                    hero_url = f"https://www.steamgriddb.com/api/v2/heroes/game/{game_id}"
-                    with requests.get(hero_url, headers=headers, timeout=20) as r:
-                        r.raise_for_status()
-                        heroes = r.json().get("data", []) or []
-                except Exception:
-                    heroes = []
-
-                if heroes:
-                    heroes.sort(key=get_score, reverse=True)
-                    best = heroes[0]
-                    img_url = (
-                        best.get("thumb")
-                        or best.get("thumb_url")
-                        or (best.get("thumbs")[0] if isinstance(best.get("thumbs"), list) and best.get("thumbs") else None)
-                        or best.get("full")
-                        or best.get("url")
-                    )
-                    if img_url:
-                        try:
-                            with requests.get(img_url, timeout=20) as rr:
-                                rr.raise_for_status()
+                # Download hero using ArtworkLoader
+                if not self._cancel_auto and not progress_dialog.wasCanceled():
+                    hero_loader = ArtworkLoader(api_key, game_id, "heroes")
+                    
+                    # Create a local event loop to wait for the thread
+                    loop = QEventLoop()
+                    hero_results = []
+                    
+                    def on_hero_finished(results):
+                        nonlocal hero_results
+                        hero_results = results
+                        loop.quit()
+                    
+                    def on_hero_error(error_msg):
+                        print(error_msg)
+                        loop.quit()
+                    
+                    hero_loader.finished.connect(on_hero_finished)
+                    hero_loader.error.connect(on_hero_error)
+                    hero_loader.start()
+                    
+                    # Process events while waiting
+                    timer = QTimer()
+                    timer.timeout.connect(lambda: QApplication.processEvents())
+                    timer.start(100)
+                    
+                    loop.exec()
+                    timer.stop()
+                    
+                    # Process hero results
+                    if hero_results and len(hero_results) > 0:
+                        # Sort by score if available
+                        best_hero = hero_results[0]  # First item is the highest scored (due to API ordering)
+                        
+                        if best_hero and best_hero.get("img_data"):
+                            img_data = best_hero["img_data"]
+                            img_url = best_hero["url"]
+                            
+                            if img_url:
                                 ext = Path(img_url).suffix
                                 if not ext or len(ext) > 6:
                                     ext = ".png"
                                 
                                 # Save to cache first
-                                hero_cache_filename = heroes_tmp_dir / f"{steam_game_name}_hero_{best.get('id')}{ext}"
+                                hero_cache_filename = heroes_tmp_dir / f"{steam_game_name}_hero_{best_hero['id']}{ext}"
                                 with hero_cache_filename.open("wb") as fh:
-                                    fh.write(rr.content)
+                                    fh.write(img_data)
                                 hero_cache_path = hero_cache_filename
-                        except Exception:
-                            hero_cache_path = None
 
-                # Download the icon
-                try:
-                    icon_url = f"https://www.steamgriddb.com/api/v2/icons/game/{game_id}"
-                    with requests.get(icon_url, headers=headers, timeout=20) as r:
-                        r.raise_for_status()
-                        icons = r.json().get("data", []) or []
-                except Exception:
-                    icons = []
-
-                if icons:
-                    icons.sort(key=get_score, reverse=True)
-                    best = icons[0]
-                    img_url = (
-                        best.get("thumb")
-                        or best.get("thumb_url")
-                        or (best.get("thumbs")[0] if isinstance(best.get("thumbs"), list) and best.get("thumbs") else None)
-                        or best.get("full")
-                        or best.get("url")
-                    )
-                    if img_url:
-                        try:
-                            with requests.get(img_url, timeout=20) as rr:
-                                rr.raise_for_status()
+                # Download icon using ArtworkLoader
+                if not self._cancel_auto and not progress_dialog.wasCanceled():
+                    icon_loader = ArtworkLoader(api_key, game_id, "icons")
+                    
+                    # Create a local event loop to wait for the thread
+                    loop = QEventLoop()
+                    icon_results = []
+                    
+                    def on_icon_finished(results):
+                        nonlocal icon_results
+                        icon_results = results
+                        loop.quit()
+                    
+                    def on_icon_error(error_msg):
+                        print(error_msg)
+                        loop.quit()
+                    
+                    icon_loader.finished.connect(on_icon_finished)
+                    icon_loader.error.connect(on_icon_error)
+                    icon_loader.start()
+                    
+                    # Process events while waiting
+                    timer = QTimer()
+                    timer.timeout.connect(lambda: QApplication.processEvents())
+                    timer.start(100)
+                    
+                    loop.exec()
+                    timer.stop()
+                    
+                    # Process icon results
+                    if icon_results and len(icon_results) > 0:
+                        # Sort by score if available
+                        best_icon = icon_results[0]  # First item is the highest scored (due to API ordering)
+                        
+                        if best_icon and best_icon.get("img_data"):
+                            img_data = best_icon["img_data"]
+                            img_url = best_icon["url"]
+                            
+                            if img_url:
                                 ext = Path(img_url).suffix
                                 if not ext or len(ext) > 6:
                                     ext = ".png"
                                 
                                 # Save to cache first
-                                icon_cache_filename = icons_tmp_dir / f"{steam_game_name}_icon_{best.get('id')}{ext}"
+                                icon_cache_filename = icons_tmp_dir / f"{steam_game_name}_icon_{best_icon['id']}{ext}"
                                 with icon_cache_filename.open("wb") as fh:
-                                    fh.write(rr.content)
+                                    fh.write(img_data)
                                 icon_cache_path = icon_cache_filename
-                        except Exception:
-                            icon_cache_path = None
 
                 # Store for later copying
-                downloads.append((inv_name, toml_file, hero_cache_path, icon_cache_path))
-
-                # Clear large variables to free memory
-                data = None
-                heroes = None
-                icons = None
+                downloads.append((portal_name, toml_file, hero_cache_path, icon_cache_path))
 
             except Exception as e:
-                print(tr("AUTO_TRANSFER_GENERAL_ERROR", inv_name=inv_name, error=str(e)))
+                print(tr("AUTO_TRANSFER_GENERAL_ERROR", portal_name=portal_name, error=str(e)))
             finally:
                 completed += 1
                 progress_dialog.setValue(completed)
@@ -3904,25 +3937,25 @@ class Meganimus(QMainWindow):
 
         # After all downloads are complete, copy from cache to art/gui
         if not self._cancel_auto and not progress_dialog.wasCanceled():
-            for inv_name, toml_file, hero_cache_path, icon_cache_path in downloads:
-                normalized = inv_name.lower().replace(" ", "_").replace("/", "_").replace("\\", "_")
+            for portal_name, toml_file, hero_cache_path, icon_cache_path in downloads:
+                normalized = portal_name.lower().replace(" ", "_").replace("/", "_").replace("\\", "_")
                 copied_hero = False
                 copied_icon = False
 
                 try:
                     with open(toml_file, "r", encoding="utf-8") as fh:
-                        inv_toml = toml.load(fh)
+                        portal_toml = toml.load(fh)
                 except Exception:
-                    inv_toml = {}
+                    portal_toml = {}
 
                 if hero_cache_path and hero_cache_path.exists():
                     try:
                         dest = art_dir / f"{normalized}{hero_cache_path.suffix}"
                         shutil.copy2(hero_cache_path, dest)
-                        inv_toml["art_path"] = str(dest)
+                        portal_toml["art_path"] = str(dest)
                         copied_hero = True
 
-                        # Delete the file from the cache folder when finished.
+                        # Delete the file from the cache folder when finished
                         hero_cache_path.unlink()
                     except Exception:
                         copied_hero = False
@@ -3931,10 +3964,10 @@ class Meganimus(QMainWindow):
                     try:
                         dest_icon = gui_dir / f"{normalized}{icon_cache_path.suffix}"
                         shutil.copy2(icon_cache_path, dest_icon)
-                        inv_toml["gui_path"] = str(dest_icon)
+                        portal_toml["gui_path"] = str(dest_icon)
                         copied_icon = True
 
-                        # Delete the file from the cache folder when finished.
+                        # Delete the file from the cache folder when finished
                         icon_cache_path.unlink()
                     except Exception:
                         copied_icon = False
@@ -3942,7 +3975,7 @@ class Meganimus(QMainWindow):
                 if copied_hero or copied_icon:
                     try:
                         with open(toml_file, "w", encoding="utf-8") as fh:
-                            toml.dump(inv_toml, fh)
+                            toml.dump(portal_toml, fh)
                     except Exception:
                         pass
 
@@ -3953,7 +3986,6 @@ class Meganimus(QMainWindow):
             QMessageBox.information(self, tr("APP_NAME"), tr("AUTO_TRANSFER_FINISHED"))
 
         self.load_portals()
-
         progress_dialog.close()
 
     def open_settings(self):
@@ -4019,11 +4051,6 @@ class Meganimus(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, tr("APP_NAME"), tr("UPDATE_ERROR", error=e))
 
-# ===================== SGDB: artwork worker (thread) =====================
-heroes_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "sgdb_heroes"
-icons_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "sgdb_icons"
-heroes_tmp_dir.mkdir(parents=True, exist_ok=True)
-icons_tmp_dir.mkdir(parents=True, exist_ok=True)
 
 class ArtworkLoader(QThread):
     finished = pyqtSignal(list)  # List of artworks [{id, url, img_data}, ...]
