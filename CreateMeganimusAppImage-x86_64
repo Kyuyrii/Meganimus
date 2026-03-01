@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# Clean previous builds
+rm -rf AppDir build dist venv Meganimus.spec Meganimus*.AppImage
+
+python3 -m venv venv
+source venv/bin/activate
+pip install pyinstaller PyQt6 toml requests psutil dbus-python
+
+pyinstaller --onefile --windowed --name Meganimus \
+  --add-binary "/usr/lib/x86_64-linux-gnu/qt6/plugins/styles/libkvantum.so:PyQt6/Qt6/plugins/styles" \
+  meganimus
+
+# Fuseiso is used to mount .iso files when the executor is RPCS3.
+if ! command -v fuseiso &> /dev/null; then
+    echo "Fuseiso was not found. If you are on Ubuntu, install it using: sudo apt install fuseiso -y"
+    exit 1
+fi
+
+if ! command -v appimagetool &> /dev/null; then
+    echo "Downloading appimagetool..."
+    wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+    chmod +x appimagetool
+fi
+
+# Create AppDir structure
+mkdir -p AppDir
+
+# Copy Meganimus files
+echo "Copying files to AppDir..."
+
+# Copy the Meganimus binary that was generated with PyInstaller.
+cp dist/Meganimus AppDir/
+
+# Copy translation folder
+cp -r translation AppDir/
+
+# Copy .svg and .desktop files
+cp io.github.kyuyrii.meganimus.svg AppDir/
+cp io.github.kyuyrii.meganimus.desktop AppDir/
+
+# Copy Meganimus code.
+# This isn't important for the AppImage to function; it's just to have easier access to the Meganimus code.
+cp meganimus AppDir/
+
+# Copy fuseiso
+mkdir -p AppDir/bin
+cp /usr/bin/fuseiso AppDir/bin/
+
+# Create AppRun
+cat > AppDir/AppRun << 'EOF'
+#!/bin/bash
+if [ -z "$APPIMAGE" ]; then
+    self="$(readlink -f -- "$0")"
+    export APPDIR="${self%/*}"
+fi
+
+# Check and rename folder if exists
+if [ -d "$HOME/AppsFiles/Meganimus" ]; then
+    if [ -d "$HOME/App" ]; then
+        echo "App folder already exists. Moving Meganimus to App..."
+        mv "$HOME/AppsFiles/Meganimus" "$HOME/App/"
+    else
+        echo "Renaming AppsFiles to App..."
+        mv "$HOME/AppsFiles" "$HOME/App"
+    fi
+
+    # Update TOML files
+    MEGANIMUS_CONFIG_PATH="$HOME/App/Meganimus/config"
+    [ -d "$MEGANIMUS_CONFIG_PATH" ] && find "$MEGANIMUS_CONFIG_PATH" -name "*.toml" -exec sed -i 's/AppsFiles/App/g' {} \;
+fi
+
+export PATH="$APPDIR/bin:$PATH"
+
+mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
+mkdir -p "$HOME/.local/share/applications"
+
+# Copy icon if it doesn't exist.
+if [ ! -f "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.kyuyrii.meganimus.svg" ]; then
+    mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
+    cp "$APPDIR/io.github.kyuyrii.meganimus.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/"
+fi
+
+# Copy/Update the .desktop file
+if [ -f "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop" ]; then
+    # If it already exists, update.
+    sed -i "s|Exec=.*|Exec=$APPIMAGE|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
+    sed -i "s|Name=.*|Name=Meganimus [AppImage]|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
+else
+    # If it doesn't exist, copy and update.
+    sed "s|Exec=.*|Exec=$APPIMAGE|" "$APPDIR/io.github.kyuyrii.meganimus.desktop" > "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
+    sed "s|Name=.*|Name=Meganimus [AppImage]|" "$APPDIR/io.github.kyuyrii.meganimus.desktop" > "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
+    chmod +x "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
+fi
+
+exec "$APPDIR/Meganimus" "$@"
+EOF
+chmod +x AppDir/AppRun
+
+# Generate AppImage
+ARCH=x86_64 ./appimagetool AppDir
+
+echo "AppImage created: $(ls *.AppImage)"
