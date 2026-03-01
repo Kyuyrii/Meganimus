@@ -11,6 +11,7 @@ import atexit
 import shutil
 import requests
 import tarfile
+import zipfile
 import io
 import threading
 import time
@@ -33,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.4.1"
+__version__ = "1.6.5"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -2814,6 +2815,10 @@ class Meganimus(QMainWindow):
         # Menu TRANSFER
         self.transfer_menu = self.menu_bar.addMenu(tr("TRANSFER"))
 
+        self.transfer_executors_action = QAction(tr("TRANSFER_EXECUTORS"), self)
+        self.transfer_executors_action.triggered.connect(self.run_executors_auto_transfer)
+        self.transfer_menu.addAction(self.transfer_executors_action)
+
         self.transfer_arts_action = QAction(tr("TRANSFER_ARTS"), self)
         self.transfer_arts_action.triggered.connect(self.open_transfer_arts)
         self.transfer_menu.addAction(self.transfer_arts_action)
@@ -3723,6 +3728,207 @@ class Meganimus(QMainWindow):
         self.portal_list_widget.addItem(item)
         return item
 
+    def run_executors_auto_transfer(self):
+        executor_dir = meganimus_dir / "executor"
+        executor_dir.mkdir(parents=True, exist_ok=True)
+
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x"]
+
+        # Check which executors are missing
+        missing_executors = []
+        for executor in executors:
+            if not (executor_dir / f"{executor}.AppImage").exists():
+                missing_executors.append(executor)
+
+        if missing_executors:
+            confirm = QMessageBox.question(
+                self,
+                tr("APP_NAME"),
+                tr("EXECUTOR_MISSING"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if confirm != QMessageBox.StandardButton.Yes:
+                return
+        else:
+            confirm = QMessageBox.question(
+                self,
+                tr("APP_NAME"),
+                tr("EXECUTOR_CHECK_UPDATES"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if confirm != QMessageBox.StandardButton.Yes:
+                return
+
+        # URLs and paths
+        sky_url = "https://raw.githubusercontent.com/Kyuyrii/Meganimus/main/executors-sky-info.toml"
+        earth_file = meganimus_config_dir / "executors-earth-info.toml"
+
+        try:
+            # Transfer sky info first
+            response = requests.get(sky_url, timeout=30)
+            response.raise_for_status()
+            sky_data = toml.loads(response.text)
+            x86_64_version = sky_data.get("x86_64", {})
+
+            # Load or create earth info
+            if earth_file.exists():
+                with open(earth_file, "r", encoding="utf-8") as f:
+                    earth_data = toml.load(f)
+                earth_version = earth_data.get("x86_64", {})
+            else:
+                earth_version = {}
+
+            # Determine what needs to be downloaded
+            executors_to_download = []
+
+            # Add missing executors
+            for executor in missing_executors:
+                executors_to_download.append(executor)
+
+            # Check for updates
+            for executor in executors:
+                executor_lower = executor.lower()
+                sky_key = f"{executor_lower}_current"
+                earth_key = f"{executor_lower}_local"
+                if sky_key not in x86_64_version:
+                    continue
+
+                if executor in executors_to_download:
+                    continue
+
+                sky_link = x86_64_version[sky_key]
+                earth_link = earth_version.get(earth_key)
+
+                if earth_link != sky_link:
+                    executors_to_download.append(executor)
+
+            if not executors_to_download:
+                QMessageBox.information(self, tr("APP_NAME"), tr("EXECUTOR_NO_UPDATES"))
+                return
+
+            # Create progress dialog
+            progress_dialog = QProgressDialog(tr("EXECUTOR_TRANSFER_IN_PROGRESS"), tr("CANCEL_BUTTON"), 0, len(executors_to_download), self)
+            progress_dialog.setWindowTitle(tr("APP_NAME"))
+            progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+            progress_dialog.setAutoClose(True)
+            progress_dialog.setAutoReset(True)
+            progress_dialog.setMinimumWidth(400)
+            progress_dialog.show()
+
+            self._cancel_executor = False
+            progress_dialog.canceled.connect(lambda: setattr(self, '_cancel_executor', True))
+
+            # Progress setup
+            progress_dialog.setMaximum(len(executors_to_download))
+            progress_dialog.setValue(0)
+            QApplication.processEvents()
+
+            # Temp directory
+            executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_downloads"
+            executors_tmp_dir.mkdir(parents=True, exist_ok=True)
+            
+            completed = 0
+            downloads = []
+
+            for executor in executors_to_download:
+                if self._cancel_executor or progress_dialog.wasCanceled():
+                    break
+
+                progress_dialog.setLabelText(tr("EXECUTOR_TRANSFERRING", name=executor))
+                QApplication.processEvents()
+
+                executor_lower = executor.lower()
+
+                download_url = x86_64_version.get(f"{executor_lower}_current")
+                file_key = f"{executor_lower}_file"
+                target_filename = x86_64_version.get(file_key, f"{executor}.AppImage")
+
+                if not download_url:
+                    completed += 1
+                    progress_dialog.setValue(completed)
+                    QApplication.processEvents()
+                    continue
+
+                executor_temp_file_path = None
+
+                try:
+                    downloader = ExecutorDownloader(download_url, executor, target_filename)
+
+                    loop = QEventLoop()
+                    download_result = {"success": False, "file_path": None}
+
+                    def on_finished(success, file_path):
+                        download_result["success"] = success
+                        download_result["file_path"] = file_path
+                        loop.quit()
+
+                    downloader.finished.connect(on_finished)
+                    downloader.error.connect(lambda msg: print(msg))
+                    downloader.start()
+
+                    timer = QTimer()
+                    timer.timeout.connect(lambda: QApplication.processEvents())
+                    timer.start(100)
+
+                    loop.exec()
+                    timer.stop()
+
+                    if download_result["success"] and download_result["file_path"]:
+                        executor_temp_file_path = download_result["file_path"]
+
+                except Exception as e:
+                    print(tr("EXECUTOR_TRANSFER_ERROR", name=executor, error=str(e)))
+
+                if executor_temp_file_path and Path(executor_temp_file_path).exists():
+                    downloads.append((executor, executor_temp_file_path))
+
+                completed += 1
+                progress_dialog.setValue(completed)
+                QApplication.processEvents()
+
+            # Copy files
+            if not self._cancel_executor and not progress_dialog.wasCanceled():
+                for executor, executor_temp_file_path in downloads:
+                    try:
+                        final_path = executor_dir / f"{executor}.AppImage"
+                        shutil.copy2(executor_temp_file_path, final_path)
+                        Path(executor_temp_file_path).unlink(missing_ok=True)
+                    except Exception as e:
+                        print(tr("EXECUTOR_COPY_ERROR", name=executor, error=str(e)))
+
+            # Make executable
+            os.system(f'chmod +x "{executor_dir}/"*.AppImage 2>/dev/null')
+
+            # Update earth file
+            if downloads and not self._cancel_executor and not progress_dialog.wasCanceled():
+                new_earth = {"x86_64": {}}
+
+                for key, value in x86_64_version.items():
+                    if key.endswith("_current"):
+                        executor_name = key.replace("_current", "")
+                        new_earth["x86_64"][f"{executor_name}_local"] = value
+
+                try:
+                    with open(earth_file, "w", encoding="utf-8") as f:
+                        toml.dump(new_earth, f)
+                except Exception as e:
+                    print(tr("EXECUTOR_EARTH_SAVE_ERROR", error=str(e)))
+
+            downloads.clear()
+            
+            if not self._cancel_executor and not progress_dialog.wasCanceled():
+                QMessageBox.information(self, tr("APP_NAME"), tr("EXECUTOR_TRANSFER_FINISHED"))
+    
+            progress_dialog.close()
+
+        except Exception as e:
+            QMessageBox.critical(self, tr("ERROR"), tr("EXECUTOR_AUTO_TRANSFER_GENERAL_ERROR", error=str(e)))
+
+    def open_transfer_executors(self):
+        self.run_executors_auto_transfer()
+
     def open_transfer_arts(self):
         self.run_sgdb_auto_transfer()
 
@@ -4123,6 +4329,88 @@ class ArtworkLoader(QThread):
             
         except Exception as e:
             self.error.emit(tr("ARTS_LOAD_ERROR", error=str(e)))
+
+class ExecutorDownloader(QThread):
+    finished = pyqtSignal(bool, str)  # success, file_path
+    error = pyqtSignal(str)
+
+    def __init__(self, url, executor_name, target_filename):
+        super().__init__()
+        self.url = url
+        self.executor_name = executor_name
+        self.target_filename = target_filename
+
+    def download_file(self, url):
+        """Download file and return path"""
+        executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_downloads"
+        executors_tmp_dir.mkdir(parents=True, exist_ok=True)
+        executor_temp_file = executors_tmp_dir / f"{self.executor_name}_{uuid.uuid4().hex}"
+        
+        response = requests.get(url, stream=True, timeout=60)
+        response.raise_for_status()
+        
+        with open(executor_temp_file, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        return executor_temp_file
+
+    def extract_and_find(self, archive_path):
+        executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_downloads"
+        extracted_dir = executors_tmp_dir / f"extract_{uuid.uuid4().hex}"
+        extracted_dir.mkdir(exist_ok=True)
+        
+        file_ext = Path(self.url).suffix.lower()
+        
+        if file_ext == '.zip' or '.zip' in self.url:
+            with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                zip_ref.extractall(extracted_dir)
+        else:
+            with tarfile.open(archive_path, 'r:*') as tar_ref:
+                tar_ref.extractall(extracted_dir)
+        
+        # Find the target AppImage
+        found_file = None
+        for root, dirs, files in os.walk(extracted_dir):
+            for file in files:
+                if file == self.target_filename or file.endswith('.AppImage'):
+                    found_file = Path(root) / file
+                    break
+            if found_file:
+                break
+        
+        if found_file:
+            # Copy to a new temp file
+            result_file = executors_tmp_dir / f"{self.executor_name}_{uuid.uuid4().hex}.AppImage"
+            shutil.copy2(found_file, result_file)
+        
+        # Cleanup
+        shutil.rmtree(extracted_dir, ignore_errors=True)
+        
+        return result_file if found_file else None
+
+    def run(self):
+        try:
+            # Download file
+            executor_temp_file = self.download_file(self.url)
+            
+            # Check if file is archive
+            file_ext = Path(self.url).suffix.lower()
+            if file_ext in ['.zip', '.tar.gz', '.tar.xz', '.tar.bz2'] or '.zip' in self.url or '.tar.' in self.url:
+                # Extract and find target file
+                extracted_file = self.extract_and_find(executor_temp_file)
+
+                # Clean up original archive
+                executor_temp_file.unlink(missing_ok=True)
+
+                executor_temp_file = extracted_file
+
+            self.finished.emit(True, str(executor_temp_file))
+            
+        except Exception as e:
+            self.error.emit(tr("EXECUTOR_TRANSFER_ERROR", name=self.executor_name, error=str(e)))
+            self.finished.emit(False, "")
 
 if __name__ == "__main__":
     # Loads settings
