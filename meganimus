@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.6"
+__version__ = "1.6.6.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -2855,16 +2855,16 @@ class Meganimus(QMainWindow):
         self.transfer_arts_action.triggered.connect(self.open_transfer_arts)
         self.transfer_menu.addAction(self.transfer_arts_action)
 
-        # Menu EXTRAS
-        self.extras_menu = self.menu_bar.addMenu(tr("EXTRAS"))
+        # Menu EXTRA
+        self.extra_menu = self.menu_bar.addMenu(tr("EXTRA"))
 
         self.settings_action = QAction(tr("MEGANIMUS_SETTINGS"), self)
         self.settings_action.triggered.connect(self.open_settings)
-        self.extras_menu.addAction(self.settings_action)
+        self.extra_menu.addAction(self.settings_action)
 
         self.about_action = QAction(tr("ABOUT_MEGANIMUS"), self)
         self.about_action.triggered.connect(self.show_about)
-        self.extras_menu.addAction(self.about_action)
+        self.extra_menu.addAction(self.about_action)
 
         # Increase the size of icons
         toolbar_icon_size = settings["design"].get("toolbar_icon_size", 32)
@@ -3202,7 +3202,7 @@ class Meganimus(QMainWindow):
             self.stop_execution()
 
     def setup_directories(self):
-        """Creates the main Meganimus directory structure using pathlib with real folder names."""
+        """Creates the Meganimus directory structure"""
         base = meganimus_dir
         subdirs = [
             base / "config",
@@ -3221,6 +3221,7 @@ class Meganimus(QMainWindow):
             base / "executor" / "RPCS3.AppImage.home",
             base / "executor" / "Ryubing.AppImage.home",
             base / "executor" / "Snes9x.AppImage.home",
+            base / "executor" / "Wine.AppImage.home",
         ]
 
         for subdir in subdirs:
