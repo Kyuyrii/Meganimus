@@ -14,3 +14,4 @@ ppsspp_current = "https://github.com/hrydgard/ppsspp/releases/download/v1.19.3/P
 rpcs3_current = "https://github.com/RPCS3/rpcs3-binaries-linux/releases/download/build-198c2e9eb835dbe95c674ad8c98138fb080f1ff4/rpcs3-v0.0.39-18867-198c2e9e_linux64.AppImage"
 ryubing_current = "https://git.ryujinx.app/api/v4/projects/1/packages/generic/Ryubing/1.3.3/ryujinx-1.3.3-x64.AppImage"
 snes9x_current = "https://github.com/snes9xgit/snes9x/releases/download/1.63/Snes9x-1.63-x86_64.AppImage"
+wine_current = "https://github.com/mmtrt/WINE_AppImage/releases/download/continuous-stable/wine-stable_11.0-x86_64.AppImage"
