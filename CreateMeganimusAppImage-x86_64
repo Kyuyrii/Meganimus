@@ -1,20 +1,16 @@
 #!/bin/bash
 
 # Clean previous builds
-rm -rf AppDir build dist venv usr fuseiso*.deb Meganimus.spec Meganimus*.AppImage
+rm -rf AppDir build dist venv Meganimus.spec Meganimus*.AppImage
 
 python3 -m venv venv
 source venv/bin/activate
 pip install pyinstaller PyQt6==6.9.1 toml requests psutil dbus-python
 
-#
+# I'm using Kvantum from lxqt-support-core24 because it's built without KDE dependencies.
 pyinstaller --onefile --windowed --name Meganimus \
   --add-binary "/snap/lxqt-support-core24/current/usr/lib/x86_64-linux-gnu/qt6/plugins/styles/libkvantum.so:PyQt6/Qt6/plugins/styles" \
   meganimus
-
-# Fuseiso is used to mount .iso files when the executor is RPCS3.
-wget http://archive.ubuntu.com/ubuntu/pool/universe/f/fuseiso/fuseiso_20070708-3.2build3_amd64.deb
-dpkg-deb -x fuseiso_20070708-3.2build3_amd64.deb .
 
 if ! command -v appimagetool &> /dev/null; then
     echo "Downloading appimagetool..."
@@ -42,10 +38,6 @@ cp io.github.kyuyrii.meganimus.desktop AppDir/
 # This isn't important for the AppImage to function; it's just to have easier access to the Meganimus code.
 cp meganimus AppDir/
 
-# Copy fuseiso
-mkdir -p AppDir/bin
-cp usr/bin/fuseiso AppDir/bin/
-
 # Create AppRun
 cat > AppDir/AppRun << 'EOF'
 #!/bin/bash
@@ -70,6 +62,7 @@ if [ -d "$HOME/AppsFiles/Meganimus" ]; then
 fi
 
 export PATH="$APPDIR/bin:$PATH"
+export APPIMAGE_EXTRACT_AND_RUN=1
 
 mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
 mkdir -p "$HOME/.local/share/applications"
