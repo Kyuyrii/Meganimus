@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.6.2"
+__version__ = "1.6.6.3"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -3177,7 +3177,7 @@ class Meganimus(QMainWindow):
                 if loop_device:
                     # Unmount
                     result_unmount = subprocess.run(
-                        ["udisksctl", "unmount", "-b", loop_device],
+                        ["udisksctl", "unmount", "-b", loop_device, "--force"],
                         capture_output=True, text=True
                     )
                     if result_unmount.returncode != 0:
