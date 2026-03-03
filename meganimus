@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.6.1"
+__version__ = "1.6.6.2"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -3166,35 +3166,39 @@ class Meganimus(QMainWindow):
         self.real_portal_process = None
 
         # Unmount/eject mounted ISO, if present
-        mount_point = meganimus_dir / "mounted_iso"
+        mounted_iso_info = meganimus_dir / "config" / "mounted_iso_info.toml"
 
-        if mount_point.exists():
+        if mounted_iso_info.exists():
             try:
-                # Check if it is mounted
-                result_check = subprocess.run(["mountpoint", "-q", str(mount_point)])
-                if result_check.returncode == 0:
-                    # Dismount with lazy unmount
+                with mounted_iso_info.open("r", encoding="utf-8") as f:
+                    iso_info = toml.load(f)
+
+                loop_device = iso_info.get("loop_device")
+                if loop_device:
+                    # Unmount
                     result_unmount = subprocess.run(
-                        ["fusermount", "-uz", str(mount_point)],
+                        ["udisksctl", "unmount", "-b", loop_device],
                         capture_output=True, text=True
                     )
                     if result_unmount.returncode != 0:
-                        print(tr("ISO_UNMOUNT_FAILED", mount=str(mount_point), error=result_unmount.stderr.strip()))
+                        print(tr("ISO_UNMOUNT_FAILED", device=loop_device, error=result_unmount.stderr.strip()))
+
+                    # Delete loop device
+                    result_delete = subprocess.run(
+                        ["udisksctl", "loop-delete", "-b", loop_device],
+                        capture_output=True, text=True
+                    )
+                    if result_delete.returncode != 0:
+                        print(tr("ISO_LOOP_DELETE_FAILED", device=loop_device, error=result_delete.stderr.strip()))
                     else:
-                        print(tr("ISO_UNMOUNTED", mount=str(mount_point)))
-                else:
-                    print(tr("ISO_NOT_MOUNTED", mount=str(mount_point)))
+                        print(tr("ISO_UNMOUNTED", device=loop_device))
 
             except Exception as e:
                 print(tr("ISO_UNMOUNT_EXCEPTION", error=str(e)))
 
             finally:
-                # Remove the mounted_iso folder
-                try:
-                    shutil.rmtree(mount_point, ignore_errors=True)
-                    print(tr("ISO_MOUNT_DIR_REMOVED", mount=str(mount_point)))
-                except Exception as e:
-                    print(tr("ISO_MOUNT_DIR_REMOVE_FAILED", mount=str(mount_point), error=str(e)))
+                # Remove info file no matter what
+                mounted_iso_info.unlink(missing_ok=True)
 
     def kill_portal_process_on_exit(self):
         if hasattr(self, "portal_process") and self.portal_process and self.portal_process.poll() is None:
@@ -3420,28 +3424,54 @@ class Meganimus(QMainWindow):
                 return
 
             if executor == "RPCS3" and game_path_full.suffix.lower() == ".iso":
-
                 iso_path = game_path_full
-                mount_point = meganimus_dir / "mounted_iso"
-                mount_point.mkdir(parents=True, exist_ok=True)
+                mount_point = None
+                loop_device = None
 
-                # Check if it is already mounted
-                result_check = subprocess.run(["mountpoint", "-q", str(mount_point)])
-                if result_check.returncode != 0:
-                    # Mount ISO using fuseiso
+                # Check if the ISO is already mounted
+                for line in open("/proc/mounts"):
+                    dev, mnt = line.split()[:2]
+                    if dev.startswith("/dev/loop") and iso_path.as_posix() in subprocess.getoutput(f"losetup {dev}"):
+                        mount_point = Path(mnt)
+                        loop_device = dev
+                        print(tr("ISO_ALREADY_MOUNTED", mount=str(mount_point)))
+                        break
+
+                # If not mounted, create loop device and mount it
+                if not mount_point:
+                    # Create loop device
+                    result = subprocess.run(
+                        ["udisksctl", "loop-setup", "-f", str(iso_path)],
+                        capture_output=True, text=True
+                    )
+                    if result.returncode != 0:
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_CREATION_FAILED", error=result.stderr))
+                        return
+
+                    match = re.search(r'/dev/loop\d+', result.stdout)
+                    if not match:
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_NOT_FOUND"))
+                        return
+                    loop_device = match.group(0)
+
+                    # Mount loop device
                     result_mount = subprocess.run(
-                        ["fuseiso", str(iso_path), str(mount_point)],
+                        ["udisksctl", "mount", "-b", loop_device],
                         capture_output=True, text=True
                     )
                     if result_mount.returncode != 0:
                         QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_FAILED", error=result_mount.stderr))
                         return
-                else:
-                    print(tr("ISO_ALREADY_MOUNTED", mount=str(mount_point)))
 
-                # Search for the PS3_GAME folder
+                    # Get mount point
+                    match = re.search(r'at (/.+)', result_mount.stdout)
+                    mount_point = Path(match.group(1)) if match else None
+                    if not mount_point or not mount_point.exists():
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_POINT_NOT_FOUND"))
+                        return
+
+                # Look for the PS3_GAME folder inside the ISO
                 ps3_game_path = mount_point / "PS3_GAME"
-
                 for _ in range(20):
                     if ps3_game_path.exists() and ps3_game_path.is_dir():
                         break
@@ -3452,6 +3482,15 @@ class Meganimus(QMainWindow):
                     return
 
                 game_path_full = ps3_game_path
+
+                # Save mounted ISO info
+                mounted_iso_info = meganimus_dir / "config" / "mounted_iso_info.toml"
+                with mounted_iso_info.open("w", encoding="utf-8") as f:
+                    toml.dump({
+                        "iso_path": str(iso_path),
+                        "loop_device": loop_device,
+                        "mount_point": str(mount_point)
+                    }, f)
 
             # Initialize env with system copy
             if hasattr(sys, '_MEIPASS'):
