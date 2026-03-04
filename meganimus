@@ -34,34 +34,40 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.6.3"
+__version__ = "1.6.7"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
     meganimus_dir = Path(os.environ["MEGANIMUS_DIR"]) / "App" / "Meganimus"
-    home_dir = Path(os.environ["MEGANIMUS_DIR"])
+    meganimus_home_dir = Path(os.environ["MEGANIMUS_DIR"])
 
 elif os.environ.get("SNAP"):
     home_connected = subprocess.run(["snapctl", "is-connected", "home"]).returncode == 0
 
     if home_connected:
         meganimus_dir = Path(os.environ["SNAP_REAL_HOME"]) / "App" / "Meganimus"
-        home_dir = Path(os.environ["SNAP_REAL_HOME"])
+        meganimus_home_dir = Path(os.environ["SNAP_REAL_HOME"])
     else:
         meganimus_dir = Path(os.environ["SNAP_USER_COMMON"]) / "App" / "Meganimus"
-        home_dir = Path(os.environ["SNAP_USER_COMMON"])
+        meganimus_home_dir = Path(os.environ["SNAP_USER_COMMON"])
 
 elif os.environ.get("container") == "flatpak":
     if os.environ.get("MEGANIMUS_DIR_APP_ID") == "1":
         meganimus_dir = Path.home() / ".var" / "app" / "io.github.kyuyrii.meganimus" / "App" / "Meganimus"
-        home_dir = Path.home() / ".var" / "app" / "io.github.kyuyrii.meganimus"
+        meganimus_home_dir = Path.home() / ".var" / "app" / "io.github.kyuyrii.meganimus"
     else:
         meganimus_dir = Path.home() / "App" / "Meganimus"
-        home_dir = Path.home()
+        meganimus_home_dir = Path.home()
 
 else:
     meganimus_dir = Path.home() / "App" / "Meganimus"
-    home_dir = Path.home()
+    meganimus_home_dir = Path.home()
+
+meganimus_art_dir = meganimus_dir / "art"
+meganimus_gui_dir = meganimus_dir / "art" / "gui"
+meganimus_config_dir = meganimus_dir / "config"
+meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
+meganimus_executor_dir = meganimus_dir / "executor"
 
 # Loads translations from external TOML files.
 def load_external_translations():
@@ -169,11 +175,6 @@ PORTAL_LOCALE_OPTIONS = [
     'עברית (he_IL.UTF-8)',
 ]
 
-# Meganimus settings (TOML)
-# $HOME/App/Meganimus/config/meganimus-settings.toml
-meganimus_config_dir = meganimus_dir / "config"
-meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
-
 def detect_default_settings() -> dict:
     """Provides default settings for first-time creation."""
     return {
@@ -199,9 +200,6 @@ def detect_default_settings() -> dict:
             "dot_config_dir": "",
             "dot_local_dir": "",
             "own_category": True,
-        },
-        "other": {
-            "sgdb_apikey": "",
         },
         "executor": {
             "azaharplus_executor": "AppImage",
@@ -246,7 +244,10 @@ def detect_default_settings() -> dict:
             "wine_executor": "AppImage",
             "wine_command": "/home/*/App/Meganimus/executor/Wine.AppImage",
             "wine_executor_args": "",
-        }
+        },
+        "other": {
+            "sgdb_apikey": "",
+        },
     }
 
 def load_settings() -> dict:
@@ -937,10 +938,6 @@ class AddPortalDialog(QDialog):
     def save_and_accept(self):
         portal_data = self.get_form_data()
         if portal_data["name"] and portal_data["game_path"]:
-            art_dir = meganimus_dir / "art"
-            gui_dir = meganimus_dir / "art" / "gui"
-            art_dir.mkdir(parents=True, exist_ok=True)
-            gui_dir.mkdir(parents=True, exist_ok=True)
 
             safe_portal_name = portal_data["name"].replace(" ", "_").lower()
             portal_file = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
@@ -960,27 +957,27 @@ class AddPortalDialog(QDialog):
                         # Only remove if the new file is different from the old one
                         if old_art_path != art_path:
                             old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
-                            for old_file in art_dir.glob(f"{old_safe_name}.*"):
+                            for old_file in meganimus_art_dir.glob(f"{old_safe_name}.*"):
                                 try:
                                     old_file.unlink()
                                 except Exception:
                                     pass
 
-                    # Copy new image only if it's not already in the art_dir
-                    if art_path.parent != art_dir:
+                    # Copy new image only if it's not already in the meganimus_art_dir
+                    if art_path.parent != meganimus_art_dir:
                         art_extension = art_path.suffix.lower()
-                        new_art_path = art_dir / f"{safe_portal_name}{art_extension}"
+                        new_art_path = meganimus_art_dir / f"{safe_portal_name}{art_extension}"
                         try:
                             shutil.copyfile(art_path, new_art_path)
                             portal_data["art_path"] = str(new_art_path)
                         except Exception:
                             portal_data["art_path"] = ""
                     else:
-                        # File is already in art_dir, just update the path with new name if needed
+                        # File is already in meganimus_art_dir, just update the path with new name if needed
                         if self.portal_data:
                             old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
                             if old_safe_name != safe_portal_name:
-                                new_art_path = art_dir / f"{safe_portal_name}{art_path.suffix.lower()}"
+                                new_art_path = meganimus_art_dir / f"{safe_portal_name}{art_path.suffix.lower()}"
                                 try:
                                     art_path.rename(new_art_path)
                                     portal_data["art_path"] = str(new_art_path)
@@ -989,7 +986,7 @@ class AddPortalDialog(QDialog):
             elif self.portal_data and self.portal_data.get("art_path"):
                 # User removed the art path - delete old file
                 old_art_path = Path(self.portal_data['art_path'])
-                if old_art_path.exists() and old_art_path.is_file() and old_art_path.parent == art_dir:
+                if old_art_path.exists() and old_art_path.is_file() and old_art_path.parent == meganimus_art_dir:
                     try:
                         old_art_path.unlink()
                     except Exception:
@@ -1006,27 +1003,27 @@ class AddPortalDialog(QDialog):
                         # Only remove if the new file is different from the old one
                         if old_gui_path != gui_path:
                             old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
-                            for old_file in gui_dir.glob(f"{old_safe_name}.*"):
+                            for old_file in meganimus_gui_dir.glob(f"{old_safe_name}.*"):
                                 try:
                                     old_file.unlink()
                                 except Exception:
                                     pass
 
-                    # Copy new image only if it's not already in the gui_dir
-                    if gui_path.parent != gui_dir:
+                    # Copy new image only if it's not already in the meganimus_gui_dir
+                    if gui_path.parent != meganimus_gui_dir:
                         gui_extension = gui_path.suffix.lower()
-                        new_gui_path = gui_dir / f"{safe_portal_name}{gui_extension}"
+                        new_gui_path = meganimus_gui_dir / f"{safe_portal_name}{gui_extension}"
                         try:
                             shutil.copyfile(gui_path, new_gui_path)
                             portal_data["gui_path"] = str(new_gui_path)
                         except Exception:
                             portal_data["gui_path"] = ""
                     else:
-                        # File is already in gui_dir, just update the path with new name if needed
+                        # File is already in meganimus_gui_dir, just update the path with new name if needed
                         if self.portal_data:
                             old_safe_name = self.portal_data.get('name', '').replace(" ", "_").lower()
                             if old_safe_name != safe_portal_name:
-                                new_gui_path = gui_dir / f"{safe_portal_name}{gui_path.suffix.lower()}"
+                                new_gui_path = meganimus_gui_dir / f"{safe_portal_name}{gui_path.suffix.lower()}"
                                 try:
                                     gui_path.rename(new_gui_path)
                                     portal_data["gui_path"] = str(new_gui_path)
@@ -1035,7 +1032,7 @@ class AddPortalDialog(QDialog):
             elif self.portal_data and self.portal_data.get("gui_path"):
                 # User removed the gui path - delete old file
                 old_gui_path = Path(self.portal_data['gui_path'])
-                if old_gui_path.exists() and old_gui_path.is_file() and old_gui_path.parent == gui_dir:
+                if old_gui_path.exists() and old_gui_path.is_file() and old_gui_path.parent == meganimus_gui_dir:
                     try:
                         old_gui_path.unlink()
                     except Exception:
@@ -1254,11 +1251,6 @@ class MultipleCreatePortalsDialog(QDialog):
         if self.file_list.topLevelItemCount() == 0:
             QMessageBox.warning(self, tr("CREATE_PORTAL"), tr("MANDATORY_FIELDS_ERROR"))
             return
-
-        art_dir = meganimus_dir / "art"
-        gui_dir = meganimus_dir / "art"/ "gui"
-        art_dir.mkdir(parents=True, exist_ok=True)
-        gui_dir.mkdir(parents=True, exist_ok=True)
 
         # Name and duplicate validation
         existing_names = set()
@@ -1908,10 +1900,8 @@ class MultipleEditPortalDialog(QDialog):
                                 except Exception:
                                     pass
 
-                        art_dir = meganimus_dir / "art"
-                        art_dir.mkdir(parents=True, exist_ok=True)
                         ext = art_path.suffix.lower()
-                        new_art_path = art_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
+                        new_art_path = meganimus_art_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
                         try:
                             shutil.copyfile(art_path, new_art_path)
                             data["art_path"] = str(new_art_path)
@@ -1943,10 +1933,8 @@ class MultipleEditPortalDialog(QDialog):
                                 except Exception:
                                     pass
 
-                        gui_dir = meganimus_dir / "art" / "gui"
-                        gui_dir.mkdir(parents=True, exist_ok=True)
                         ext = gui_path.suffix.lower()
-                        new_gui_path = gui_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
+                        new_gui_path = meganimus_gui_dir / f"{data['name'].replace(' ', '_').lower()}{ext}"
                         try:
                             shutil.copyfile(gui_path, new_gui_path)
                             data["gui_path"] = str(new_gui_path)
@@ -2182,7 +2170,7 @@ class PortalInfoViewerDialog(QDialog):
             if search_mode == tr("NAME"):
                 match = text in rb.text().lower()
             else:  # Content
-                file_path = meganimus_dir / "config" / filename
+                file_path = meganimus_config_dir / filename
                 if file_path.exists():
                     try:
                         with open(file_path, "r", encoding="utf-8") as f:
@@ -2220,7 +2208,7 @@ class PortalInfoViewerDialog(QDialog):
 
     # Display information by reading the TOML.
     def show_portal_info_from_file(self, filename: str):
-        file_path = meganimus_dir / "config" / filename
+        file_path = meganimus_config_dir / filename
         if not file_path.exists():
             self.text_box.clear()
             return
@@ -3166,7 +3154,7 @@ class Meganimus(QMainWindow):
         self.real_portal_process = None
 
         # Unmount/eject mounted ISO, if present
-        mounted_iso_info = meganimus_dir / "config" / "mounted_iso_info.toml"
+        mounted_iso_info = meganimus_config_dir / "mounted_iso_info.toml"
 
         if mounted_iso_info.exists():
             try:
@@ -3207,25 +3195,25 @@ class Meganimus(QMainWindow):
 
     def setup_directories(self):
         """Creates the Meganimus directory structure"""
-        base = meganimus_dir
         subdirs = [
-            base / "config",
-            base / "art",
-            base / "executor",
-            base / "executor" / "AzaharPlus.AppImage.home",
-            base / "executor" / "Cemu.AppImage.home",
-            base / "executor" / "Dolphin.AppImage.home",
-            base / "executor" / "Duckstation.AppImage.home",
-            base / "executor" / "Eden.AppImage.home",
-            base / "executor" / "Flycast.AppImage.home",
-            base / "executor" / "MelonDS.AppImage.home",
-            base / "executor" / "mGBA.AppImage.home",
-            base / "executor" / "PCSX2.AppImage.home",
-            base / "executor" / "PPSSPP.AppImage.home",
-            base / "executor" / "RPCS3.AppImage.home",
-            base / "executor" / "Ryubing.AppImage.home",
-            base / "executor" / "Snes9x.AppImage.home",
-            base / "executor" / "Wine.AppImage.home",
+            meganimus_art_dir,
+            meganimus_gui_dir,
+            meganimus_config_dir,
+            meganimus_executor_dir,
+            meganimus_executor_dir / "AzaharPlus.AppImage.home",
+            meganimus_executor_dir / "Cemu.AppImage.home",
+            meganimus_executor_dir / "Dolphin.AppImage.home",
+            meganimus_executor_dir / "Duckstation.AppImage.home",
+            meganimus_executor_dir / "Eden.AppImage.home",
+            meganimus_executor_dir / "Flycast.AppImage.home",
+            meganimus_executor_dir / "MelonDS.AppImage.home",
+            meganimus_executor_dir / "mGBA.AppImage.home",
+            meganimus_executor_dir / "PCSX2.AppImage.home",
+            meganimus_executor_dir / "PPSSPP.AppImage.home",
+            meganimus_executor_dir / "RPCS3.AppImage.home",
+            meganimus_executor_dir / "Ryubing.AppImage.home",
+            meganimus_executor_dir / "Snes9x.AppImage.home",
+            meganimus_executor_dir / "Wine.AppImage.home",
         ]
 
         for subdir in subdirs:
@@ -3423,6 +3411,77 @@ class Meganimus(QMainWindow):
                 QMessageBox.critical(self, tr("APP_NAME"), tr("ERROR_GAME_NOT_FOUND", path=str(game_path_full)))
                 return
 
+            if executor == "Wine" and game_path_full.suffix.lower() == ".iso":
+                iso_path = game_path_full
+                mount_point = None
+                loop_device = None
+
+                # Check if the ISO is already mounted
+                for line in open("/proc/mounts"):
+                    dev, mnt = line.split()[:2]
+                    if dev.startswith("/dev/loop") and iso_path.as_posix() in subprocess.getoutput(f"losetup {dev}"):
+                        mount_point = Path(mnt)
+                        loop_device = dev
+                        print(tr("ISO_ALREADY_MOUNTED", mount=str(mount_point)))
+                        break
+
+                # If not mounted, create loop device and mount it
+                if not mount_point:
+                    # Create loop device
+                    result = subprocess.run(
+                        ["udisksctl", "loop-setup", "-f", str(iso_path)],
+                        capture_output=True, text=True
+                    )
+                    if result.returncode != 0:
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_CREATION_FAILED", error=result.stderr))
+                        return
+
+                    match = re.search(r'/dev/loop\d+', result.stdout)
+                    if not match:
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_NOT_FOUND"))
+                        return
+                    loop_device = match.group(0)
+
+                    # Mount loop device
+                    result_mount = subprocess.run(
+                        ["udisksctl", "mount", "-b", loop_device],
+                        capture_output=True, text=True
+                    )
+                    if result_mount.returncode != 0:
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_FAILED", error=result_mount.stderr))
+                        return
+
+                    # Get mount point
+                    match = re.search(r'at (/.+)', result_mount.stdout)
+                    mount_point = Path(match.group(1)) if match else None
+                    if not mount_point or not mount_point.exists():
+                        QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_POINT_NOT_FOUND"))
+                        return
+
+                # Look for the .exe inside the ISO
+                exe_files = []
+                for _ in range(20):
+                    exe_files = list(mount_point.glob("setup.exe")) or list(mount_point.rglob("*.exe"))
+                    if exe_files:
+                        break
+                    time.sleep(0.3)
+
+                if not exe_files:
+                    QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_NO_EXE_FOUND"))
+                    return
+
+                game_path_full = exe_files[0]
+                print(tr("ISO_MOUNTED_EXE_FOUND", iso=str(iso_path), exe=str(game_path_full)))
+
+                # Save mounted ISO info
+                mounted_iso_info = meganimus_config_dir / "mounted_iso_info.toml"
+                with mounted_iso_info.open("w", encoding="utf-8") as f:
+                    toml.dump({
+                        "iso_path": str(iso_path),
+                        "loop_device": loop_device,
+                        "mount_point": str(mount_point)
+                    }, f)
+
             if executor == "RPCS3" and game_path_full.suffix.lower() == ".iso":
                 iso_path = game_path_full
                 mount_point = None
@@ -3484,7 +3543,7 @@ class Meganimus(QMainWindow):
                 game_path_full = ps3_game_path
 
                 # Save mounted ISO info
-                mounted_iso_info = meganimus_dir / "config" / "mounted_iso_info.toml"
+                mounted_iso_info = meganimus_config_dir / "mounted_iso_info.toml"
                 with mounted_iso_info.open("w", encoding="utf-8") as f:
                     toml.dump({
                         "iso_path": str(iso_path),
@@ -3803,15 +3862,13 @@ class Meganimus(QMainWindow):
         return item
 
     def run_executors_auto_transfer(self):
-        executor_dir = meganimus_dir / "executor"
-        executor_dir.mkdir(parents=True, exist_ok=True)
 
         executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "Wine"]
 
         # Check which executors are missing
         missing_executors = []
         for executor in executors:
-            if not (executor_dir / f"{executor}.AppImage").exists():
+            if not (meganimus_executor_dir / f"{executor}.AppImage").exists():
                 missing_executors.append(executor)
 
         if missing_executors:
@@ -4066,12 +4123,6 @@ class Meganimus(QMainWindow):
         progress_dialog.setValue(0)
         QApplication.processEvents()
 
-        # Directories
-        art_dir = meganimus_dir / "art"
-        gui_dir = meganimus_dir / "art" / "gui"
-        art_dir.mkdir(parents=True, exist_ok=True)
-        gui_dir.mkdir(parents=True, exist_ok=True)
-
         # Cache directories
         heroes_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "sgdb_heroes"
         icons_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "sgdb_icons"
@@ -4230,7 +4281,7 @@ class Meganimus(QMainWindow):
 
                 if hero_cache_path and hero_cache_path.exists():
                     try:
-                        dest = art_dir / f"{normalized}{hero_cache_path.suffix}"
+                        dest = meganimus_art_dir / f"{normalized}{hero_cache_path.suffix}"
                         shutil.copy2(hero_cache_path, dest)
                         portal_toml["art_path"] = str(dest)
                         copied_hero = True
@@ -4242,7 +4293,7 @@ class Meganimus(QMainWindow):
 
                 if icon_cache_path and icon_cache_path.exists():
                     try:
-                        dest_icon = gui_dir / f"{normalized}{icon_cache_path.suffix}"
+                        dest_icon = meganimus_gui_dir / f"{normalized}{icon_cache_path.suffix}"
                         shutil.copy2(icon_cache_path, dest_icon)
                         portal_toml["gui_path"] = str(dest_icon)
                         copied_icon = True
