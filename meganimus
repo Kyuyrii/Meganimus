@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.7"
+__version__ = "1.6.7.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -2523,11 +2523,11 @@ class ShortcutManager(QDialog):
 
         # If dot_config_dir is empty in config, use default
         if not dot_config_dir:
-            dot_config_dir = str(home_dir / ".config")
+            dot_config_dir = str(meganimus_home_dir / ".config")
 
         # If dot_local_dir is empty in config, use default
         if not dot_local_dir:
-            dot_local_dir = str(home_dir / ".local")
+            dot_local_dir = str(meganimus_home_dir / ".local")
 
         # Processed settings for shortcut manager
         info = {
@@ -2541,8 +2541,8 @@ class ShortcutManager(QDialog):
 
     def get_default_desktop_dir(self):
         # Get default desktop directory from XDG user dirs.
-        desktop_dir = home_dir / "Desktop"
-        user_dirs_file = home_dir / ".config" / "user-dirs.dirs"
+        desktop_dir = meganimus_home_dir / "Desktop"
+        user_dirs_file = meganimus_home_dir / ".config" / "user-dirs.dirs"
         if user_dirs_file.exists():
             try:
                 with open(user_dirs_file, encoding="utf-8") as f:
@@ -2550,7 +2550,7 @@ class ShortcutManager(QDialog):
                         line = line.strip()
                         if line.startswith("XDG_DESKTOP_DIR"):
                             path = line.split("=", 1)[1].strip().strip('"')
-                            path = path.replace("$HOME", str(home_dir))
+                            path = path.replace("$HOME", str(meganimus_home_dir))
                             desktop_dir = Path(path)
                             break
             except Exception:
@@ -2568,7 +2568,7 @@ class ShortcutManager(QDialog):
         save_settings(settings)
 
     def browse_folder(self, line_edit: QLineEdit):
-        folder = QFileDialog.getExistingDirectory(self, tr("SELECT_FOLDER"), str(home_dir))
+        folder = QFileDialog.getExistingDirectory(self, tr("SELECT_FOLDER"), str(meganimus_home_dir))
         if not folder:
             return
 
@@ -3125,6 +3125,23 @@ class Meganimus(QMainWindow):
             self.inhibit_cookie = None
         self.setWindowTitle(tr("APP_NAME"))
 
+        # Try to kill by the real executable, for .exe or .msi
+        if hasattr(self, "last_game") and self.last_game:
+            game_path = Path(self.last_game)
+            if game_path.suffix.lower() in (".exe", ".msi"):
+                game_name = game_path.name.lower()
+                for proc in psutil.process_iter(['pid', 'cmdline']):
+                    try:
+                        cmdline = " ".join(proc.info['cmdline'] or []).lower()
+                        if game_name in cmdline:
+                            try:
+                                proc.kill()
+                                print(tr("STOP_PROCESS_SUCCESS", pid=proc.pid))
+                            except Exception as e:
+                                print(tr("STOP_KILL_ERROR", pid=proc.pid, error=str(e)))
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+
         if hasattr(self, "portal_process") and self.portal_process:
             if self.portal_process.poll() is None:
                 try:
@@ -3339,6 +3356,25 @@ class Meganimus(QMainWindow):
                                 data[field] = data[field].replace(old_base, current_base, 1)
                                 modified = True
                     
+                    # Handle WINEPREFIX in env_vars
+                    if 'WINEPREFIX=' in data['env_vars'] and '/App/Meganimus/' in data['env_vars']:
+                        env_vars = data['env_vars']
+                        
+                        # Find where WINEPREFIX path starts and ends
+                        prefix_start = env_vars.find('WINEPREFIX=') + 11
+                        prefix_end = env_vars.find(' ', prefix_start)
+                        if prefix_end == -1:
+                            prefix_end = len(env_vars)
+
+                        wineprefix_path = env_vars[prefix_start:prefix_end]
+
+                        if '/App/Meganimus/' in wineprefix_path:
+                            old_base = wineprefix_path.split('/App/Meganimus/')[0]
+                            if old_base != current_base:
+                                new_path = wineprefix_path.replace(old_base, current_base, 1)
+                                data['env_vars'] = env_vars[:prefix_start] + new_path + env_vars[prefix_end:]
+                                modified = True
+
                     if modified:
                         f.seek(0)
                         toml.dump(data, f)
@@ -3782,7 +3818,7 @@ class Meganimus(QMainWindow):
             self.portal_process = subprocess.Popen(
                 command,
                 env=env,
-                cwd=str(home_dir),
+                cwd=str(meganimus_home_dir),
                 stdout=sys.stdout,
                 stderr=sys.stderr
             )
