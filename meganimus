@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.7.1"
+__version__ = "1.6.8"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -68,6 +68,7 @@ meganimus_gui_dir = meganimus_dir / "art" / "gui"
 meganimus_config_dir = meganimus_dir / "config"
 meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
 meganimus_executor_dir = meganimus_dir / "executor"
+meganimus_wineprefix_dir = meganimus_dir / "wineprefix"
 
 # Loads translations from external TOML files.
 def load_external_translations():
@@ -719,7 +720,6 @@ class AddPortalDialog(QDialog):
         for executor in executors:
             self.executor_combo.addItem(executor, userData=executor)
 
-        # Add to layout (line 1, after PORTAL_NAME)
         self.main_layout.addWidget(self.executor_label, 1, 0)
         self.main_layout.addWidget(self.executor_combo, 1, 1, 1, 2)
 
@@ -901,7 +901,7 @@ class AddPortalDialog(QDialog):
         folder_path = QFileDialog.getExistingDirectory(
             self,
             tr("SELECT_WINEPREFIX_FOLDER"),
-            "",)
+            str(meganimus_wineprefix_dir))
         if folder_path:
             current_env = self.env_vars_input.text().strip()
             wine_prefix = f"WINEPREFIX={folder_path}"
@@ -2371,13 +2371,12 @@ class ShortcutManager(QDialog):
         self.locations_widget.hide()
         main_layout.addWidget(self.locations_widget)
 
-        # Show locations and update button
+        # Show locations, info and update button
         buttons_layout = QHBoxLayout()
         self.locations_btn = QPushButton(tr("SHORTCUTS_PATHS"))
         self.locations_btn.clicked.connect(self.toggle_locations)
         buttons_layout.addWidget(self.locations_btn)
 
-        # Button to inform users about problems in Snap.
         self.paths_info_button = QPushButton()
         self.paths_info_button.setIcon(QIcon.fromTheme("help-about"))
         self.paths_info_button.clicked.connect(self.show_paths_info)
@@ -2444,18 +2443,18 @@ class ShortcutManager(QDialog):
 
         # Get the appropriate folder path based on current view
         if self.current_view == "desktop":
-            folder_path = Path(self.shortcut_manager_info.get("desktop_dir", ""))
+            folder_path = Path(self.desktop_dir_input.text())
         else:
             # For menu view, use .local/share/applications
-            dot_local = Path(self.shortcut_manager_info.get("dot_local_dir", ""))
+            dot_local = Path(self.dot_local_input.text())
             folder_path = dot_local / "share" / "applications"
         
         existing_desktops = set()
 
         if folder_path.exists():
             safe_to_display = {data["safe_portal_name"]: name
-                              for name, data in self.portals.items()
-                              if "safe_portal_name" in data}
+                            for name, data in self.portals.items()
+                            if "safe_portal_name" in data}
 
             for f in folder_path.glob("portal-*.desktop"):
                 if self.is_meganimus_desktop(f):
@@ -2473,7 +2472,10 @@ class ShortcutManager(QDialog):
         new_checkboxes = {}
         for inv in sorted(self.portals.keys()):
             cb = QCheckBox(inv)
-            cb.setChecked(self.checkbox_states[self.current_view].get(inv, inv in existing_desktops))
+            # Combine saved states with existing shortcuts
+            was_checked = self.checkbox_states[self.current_view].get(inv, False)
+            exists_in_folder = inv in existing_desktops
+            cb.setChecked(was_checked or exists_in_folder)
             new_checkboxes[inv] = cb
         self.checkbox_widgets[self.current_view] = new_checkboxes
 
@@ -2574,6 +2576,8 @@ class ShortcutManager(QDialog):
 
         new_folder = Path(folder)
         line_edit.setText(str(new_folder))
+
+        self.update_list_view()
 
     def remove_all_meganimus_desktops(self, folder: Path):
         if not folder.exists():
@@ -3231,6 +3235,7 @@ class Meganimus(QMainWindow):
             meganimus_executor_dir / "Ryubing.AppImage.home",
             meganimus_executor_dir / "Snes9x.AppImage.home",
             meganimus_executor_dir / "Wine.AppImage.home",
+            meganimus_wineprefix_dir,
         ]
 
         for subdir in subdirs:
@@ -4059,14 +4064,14 @@ class Meganimus(QMainWindow):
             if not self._cancel_executor and not progress_dialog.wasCanceled():
                 for executor, executor_temp_file_path in downloads:
                     try:
-                        final_path = executor_dir / f"{executor}.AppImage"
+                        final_path = meganimus_executor_dir / f"{executor}.AppImage"
                         shutil.copy2(executor_temp_file_path, final_path)
                         Path(executor_temp_file_path).unlink(missing_ok=True)
                     except Exception as e:
                         print(tr("EXECUTOR_COPY_ERROR", name=executor, error=str(e)))
 
             # Make executable
-            os.system(f'chmod +x "{executor_dir}/"*.AppImage 2>/dev/null')
+            os.system(f'chmod +x "{meganimus_executor_dir}/"*.AppImage 2>/dev/null')
 
             # Update earth file
             if downloads and not self._cancel_executor and not progress_dialog.wasCanceled():
