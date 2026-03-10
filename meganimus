@@ -35,7 +35,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.7"
+__version__ = "2.0"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -52,13 +52,9 @@ elif os.environ.get("SNAP"):
         meganimus_dir = Path(os.environ["SNAP_USER_COMMON"]) / "App" / "Meganimus"
         meganimus_home_dir = Path(os.environ["SNAP_USER_COMMON"])
 
-elif os.environ.get("container") == "flatpak":
-    if os.environ.get("MEGANIMUS_DIR_APP_ID") == "1":
-        meganimus_dir = Path.home() / ".var" / "app" / "io.github.kyuyrii.meganimus" / "App" / "Meganimus"
-        meganimus_home_dir = Path.home() / ".var" / "app" / "io.github.kyuyrii.meganimus"
-    else:
-        meganimus_dir = Path.home() / "App" / "Meganimus"
-        meganimus_home_dir = Path.home()
+elif os.environ.get("container") == "flatpak" and os.environ.get("MEGANIMUS_DIR_APP_ID") == "1":
+    meganimus_dir = Path.home() / ".var" / "app" / "io.github.kyuyrii.meganimus" / "App" / "Meganimus"
+    meganimus_home_dir = Path.home() / ".var" / "app" / "io.github.kyuyrii.meganimus"
 
 else:
     meganimus_dir = Path.home() / "App" / "Meganimus"
@@ -213,49 +209,34 @@ def detect_default_settings() -> dict:
             "own_category": True,
         },
         "executor": {
-            "azaharplus_executor": "AppImage",
             "azaharplus_command": "/home/*/App/Meganimus/executor/AzaharPlus.AppImage",
             "azaharplus_executor_args": "-f",
-            "cemu_executor": "AppImage",
             "cemu_command": "/home/*/App/Meganimus/executor/Cemu.AppImage",
             "cemu_executor_args": "-f -g",
-            "dolphin_executor": "AppImage",
             "dolphin_command": "/home/*/App/Meganimus/executor/Dolphin.AppImage",
             "dolphin_executor_args": "--batch -e",
-            "duckstation_executor": "AppImage",
             "duckstation_command": "/home/*/App/Meganimus/executor/Duckstation.AppImage",
             "duckstation_executor_args": "-fullscreen",
-            "eden_executor": "AppImage",
             "eden_command": "/home/*/App/Meganimus/executor/Eden.AppImage",
             "eden_executor_args": "-f -g",
-            "flycast_executor": "AppImage",
             "flycast_command": "/home/*/App/Meganimus/executor/Flycast.AppImage",
             "flycast_executor_args": "",
-            "melonds_executor": "AppImage",
             "melonds_command": "/home/*/App/Meganimus/executor/MelonDS.AppImage",
             "melonds_executor_args": "-f",
-            "mgba_executor": "AppImage",
             "mgba_command": "/home/*/App/Meganimus/executor/mGBA.AppImage",
             "mgba_executor_args": "-f",
-            "pcsx2_executor": "AppImage",
             "pcsx2_command": "/home/*/App/Meganimus/executor/PCSX2.AppImage",
             "pcsx2_executor_args": "-fullscreen",
-            "ppsspp_executor": "AppImage",
             "ppsspp_command": "/home/*/App/Meganimus/executor/PPSSPP.AppImage",
             "ppsspp_executor_args": "--fullscreen --pause-menu-exit",
-            "rmg_executor": "AppImage",
             "rmg_command": "/home/*/App/Meganimus/executor/RMG.AppImage",
             "rmg_executor_args": "--fullscreen",
-            "rpcs3_executor": "AppImage",
             "rpcs3_command": "/home/*/App/Meganimus/executor/RPCS3.AppImage",
             "rpcs3_executor_args": "--no-gui --fullscreen",
-            "ryubing_executor": "AppImage",
             "ryubing_command": "/home/*/App/Meganimus/executor/Ryubing.AppImage",
             "ryubing_executor_args": "-f",
-            "snes9x_executor": "AppImage",
             "snes9x_command": "/home/*/App/Meganimus/executor/Snes9x.AppImage",
             "snes9x_executor_args": "",
-            "wine_executor": "AppImage",
             "wine_command": "/home/*/App/Meganimus/executor/Wine.AppImage",
             "wine_executor_args": "",
         },
@@ -390,180 +371,51 @@ class SettingsDialog(QDialog):
         tabs = QTabWidget()
         layout.addWidget(tabs)
 
-        # Configuring executors and options
+        # Configuring executors
         self.executors_config = {
             "AzaharPlus": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                ],
-                "default_command": {
-                    "Snap": "snap run azaharplus-emulator",
-                },
                 "executor_args": "-f",
             },
             "Cemu": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run cemu-emulator",
-                    "Flatpak": "flatpak run info.cemu.Cemu",
-                },
                 "executor_args": "-f -g",
             },
             "Dolphin": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run dolphin-emulator-kyu",
-                    "Flatpak": "flatpak run org.DolphinEmu.dolphin-emu",
-                },
                 "executor_args": "--batch -e",
             },
             "Duckstation": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run duckstation-gpl",
-                    "Flatpak": "flatpak run org.duckstation.DuckStation",
-                },
                 "executor_args": "-fullscreen",
             },
             "Eden": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                ],
-                "default_command": {
-                    "Snap": "snap run eden-emulator",
-                },
                 "executor_args": "-f -g",
             },
             "Flycast": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run flycast-emulator",
-                    "Flatpak": "flatpak run org.flycast.Flycast",
-                },
                 "executor_args": "",
             },
             "MelonDS": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run melonds-emulator",
-                    "Flatpak": "flatpak run net.kuribo64.melonDS",
-                },
                 "executor_args": "-f",
             },
             "mGBA": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run mgba-emulator",
-                    "Flatpak": "flatpak run io.mgba.mGBA",
-                },
                 "executor_args": "-f",
             },
             "PCSX2": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run pcsx2-emulator",
-                    "Flatpak": "flatpak run net.pcsx2.PCSX2",
-                },
                 "executor_args": "-fullscreen",
             },
             "PPSSPP": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run ppsspp-emulator",
-                    "Flatpak": "flatpak run org.ppsspp.PPSSPP",
-                },
                 "executor_args": "--fullscreen --pause-menu-exit",
             },
             "RMG": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "",
-                    "Flatpak": "flatpak run com.github.Rosalie241.RMG",
-                },
                 "executor_args": "--fullscreen",
             },
             "RPCS3": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run rpcs3-emulator",
-                    "Flatpak": "flatpak run net.rpcs3.RPCS3",
-                },
                 "executor_args": "--no-gui --fullscreen",
             },
             "Ryubing": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run ryubing-emulator",
-                    "Flatpak": "flatpak run io.github.ryubing.Ryujinx",
-                },
                 "executor_args": "-f",
             },
             "Snes9x": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run snes9x-gtk",
-                    "Flatpak": "flatpak run com.snes9x.Snes9x",
-                },
                 "executor_args": "",
             },
             "Wine": {
-                "options": [
-                    (tr("APPIMAGE"), "AppImage"),
-                    ("Flatpak", "Flatpak"),
-                ],
-                "default_command": {
-                    "Snap": "snap run winehq-stable",
-                    "Flatpak": "flatpak run org.winehq.Wine",
-                },
                 "executor_args": "",
             },
         }
@@ -576,30 +428,16 @@ class SettingsDialog(QDialog):
             tab = QWidget()
             tab_layout = QVBoxLayout(tab)
 
-            # Version/Type selection
-            version_layout = QHBoxLayout()
-            version_label = QLabel(tr("EXECUTOR_VERSION"))
-            combo = QComboBox()
-            for text, value in config["options"]:
-                combo.addItem(text, userData=value)
-            version_layout.addWidget(version_label)
-            version_layout.addWidget(combo, stretch=1)
-            tab_layout.addLayout(version_layout)
-
             # Command
-            form_layout = QFormLayout()
-            command_label = QLabel(tr("EXECUTOR_COMMAND"))
+            command_label = QLabel(tr("EXECUTOR_PATH"))
             path_input = QLineEdit()
-            form_layout.addRow(command_label, path_input)
 
-            # Args
-            args_label = QLabel(tr("EXECUTOR_ARGS"))
-            args_input = QLineEdit()
-            args_input.setText(config["executor_args"])
-            args_input.setReadOnly(True)
-            form_layout.addRow(args_label, args_input)
+            # Path saved
+            saved_command = self.settings["executor"].get(f"{executor_name.lower()}_command", "")
+            path_input.setText(saved_command)
 
-            tab_layout.addLayout(form_layout)
+            tab_layout.addWidget(command_label)
+            tab_layout.addWidget(path_input)
 
             # Buttons
             button_layout = QHBoxLayout()
@@ -614,60 +452,25 @@ class SettingsDialog(QDialog):
 
             # Save widgets for later access
             self.executor_widgets[executor_name] = {
-                "combo": combo,
                 "path_input": path_input,
-                "args_input": args_input,
                 "start_btn": start_btn,
                 "browse_btn": browse_btn
             }
 
             # Connects signals
-            combo.currentIndexChanged.connect(
-                partial(self._on_combo_changed, executor_name, combo))
             start_btn.clicked.connect(partial(self.start_executor_via_meganimus, executor_name))
             browse_btn.clicked.connect(partial(self.browse_executor, executor_name))
-
-            # Initializes saved values
-            saved_executor = self.settings["executor"].get(f"{executor_name.lower()}_executor", "AppImage")
-
-            # Find index for saved executor
-            index = next((i for i in range(combo.count()) if combo.itemData(i) == saved_executor), 
-                        next((i for i in range(combo.count()) if combo.itemData(i) == "AppImage"), 0))
-            combo.setCurrentIndex(index)
-            self.update_executor_command(executor_name, combo.itemData(index))
 
         # Save Button
         save_btn = QPushButton(tr("SAVE_BUTTON"))
         save_btn.clicked.connect(self.save_and_close)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
-    def _on_combo_changed(self, executor_name, combo, index):
-        self.update_executor_command(executor_name, combo.itemData(index))
-
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Prevents Enter from triggering something that is not selected
             return
         super().keyPressEvent(event)
-
-    def update_executor_command(self, executor_name, choice):
-        widgets = self.executor_widgets[executor_name]
-        path_input = widgets["path_input"]
-        browse_btn = widgets["browse_btn"]
-
-        default_cmds = self.executors_config[executor_name].get("default_command", {})
-        saved_executor_type = self.settings["executor"].get(f"{executor_name.lower()}_executor", "AppImage")
-        saved_command = self.settings["executor"].get(f"{executor_name.lower()}_command", "")
-
-        # Command
-        if choice == "AppImage":
-            path_input.setText(saved_command if saved_executor_type == "AppImage" else "")
-            path_input.setReadOnly(False)
-            browse_btn.setEnabled(True)
-        elif choice in default_cmds:  # Snap / Flatpak
-            path_input.setText(default_cmds[choice])
-            path_input.setReadOnly(True)
-            browse_btn.setEnabled(False)
 
     def browse_executor(self, executor_name):
         widgets = self.executor_widgets[executor_name]
@@ -677,13 +480,11 @@ class SettingsDialog(QDialog):
 
     def start_executor_via_meganimus(self, executor_name):
         widgets = self.executor_widgets[executor_name]
-        executor_type = widgets["combo"].currentData()
         executor_command_str = widgets["path_input"].text().strip()
 
         if self.parent() and hasattr(self.parent(), "start_executor"):
             self.parent().start_executor(
                 executor_name,
-                executor_type=executor_type,
                 executor_command_str=executor_command_str)
 
     def save_and_close(self):
@@ -702,9 +503,8 @@ class SettingsDialog(QDialog):
         self.settings["design"]["icon_width_grid"] = self.grid_width_input.value()
         self.settings["design"]["toolbar_icon_size"] = self.toolbar_icon_size_input.value()
 
-        # Save all executors dynamically
+        # Save all executors
         for executor_name, widgets in self.executor_widgets.items():
-            self.settings["executor"][f"{executor_name.lower()}_executor"] = widgets["combo"].currentData()
             self.settings["executor"][f"{executor_name.lower()}_command"] = widgets["path_input"].text()
             self.settings["executor"][f"{executor_name.lower()}_executor_args"] = self.executors_config[executor_name]["executor_args"]
 
@@ -3301,7 +3101,7 @@ class Meganimus(QMainWindow):
                 if selected_portal_file and selected_portal_file == portal_file:
                     restored_selection_item = item
                     
-            except (IOError, toml.TomlDecodeError) as e:
+            except (IOError, tomlkit.exceptions.ParseError) as e:
                 print(tr("ERROR_LOADING_FILE", file=portal_file, error=e))
 
         # Restores the selection
@@ -3410,7 +3210,7 @@ class Meganimus(QMainWindow):
         try:
             with portal_file_path.open('r', encoding='utf-8') as f:
                 portal_data = tomlkit.load(f)
-        except (IOError, toml.TomlDecodeError):
+        except (IOError, tomlkit.exceptions.ParseError):
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR", name=portal_name))
             return
 
@@ -3450,8 +3250,6 @@ class Meganimus(QMainWindow):
 
             game_path_full = Path(portal_data['game_path'])
             executor = portal_data.get("executor", "Linux")
-
-            executor_type = settings["executor"].get(f"{executor.lower()}_executor", "AppImage")
 
             # Check if the game path exists.
             if not game_path_full.exists():
@@ -3636,32 +3434,7 @@ class Meganimus(QMainWindow):
             portal_args = portal_data.get('portal_args', '').strip()
             portal_args_list = portal_args.split() if portal_args else []
 
-            def snap_exists(snap_name: str) -> bool:
-                try:
-                    subprocess.run(
-                        ["snap", "list", snap_name],
-                        check=True,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
-                    return True
-                except subprocess.CalledProcessError:
-                    return False
-
-            def flatpak_exists(flatpak_name: str) -> bool:
-                try:
-                    subprocess.run(
-                        ["flatpak", "info", flatpak_name],
-                        check=True,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
-                    return True
-                except subprocess.CalledProcessError:
-                    return False
-
             def build_executor_command(executor, game_path):
-                executor_type = settings["executor"].get(f"{executor.lower()}_executor", "AppImage")
                 executor_command_str = settings["executor"].get(f"{executor.lower()}_command", "").strip()
                 executor_args_str = settings["executor"].get(f"{executor.lower()}_executor_args", "").strip()
 
@@ -3669,32 +3442,16 @@ class Meganimus(QMainWindow):
                 if executor == "Linux":
                     return [str(game_path)]
 
-                # AppImage
-                if executor_type == "AppImage":
-                    if not executor_command_str:
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET", executor=executor))
-                        return None
-                    executor_path = Path(executor_command_str)
-                    if not executor_path.exists():
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_APPIMAGE_NOT_FOUND", path=str(executor_path)))
-                        return None
-                    cmd = [str(executor_path)]
+                if not executor_command_str:
+                    QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET", executor=executor))
+                    return None
 
-                # Snap
-                elif executor_type == "Snap":
-                    snap_name = executor_command_str.split()[2] if executor_command_str.startswith("snap run") else executor
-                    if not snap_exists(snap_name):
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_SNAP_NOT_FOUND", name=snap_name))
-                        return None
-                    cmd = executor_command_str.split()
+                executor_path = Path(executor_command_str)
+                if not executor_path.exists():
+                    QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_APPIMAGE_NOT_FOUND", path=str(executor_path)))
+                    return None
 
-                # Flatpak
-                elif executor_type == "Flatpak":
-                    flatpak_name = executor_command_str.split()[2] if executor_command_str.startswith("flatpak run") else executor
-                    if not flatpak_exists(flatpak_name):
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_FLATPAK_NOT_FOUND", name=flatpak_name))
-                        return None
-                    cmd = executor_command_str.split()
+                cmd = [str(executor_path)]
 
                 if executor_args_str:
                     cmd += shlex.split(executor_args_str)
@@ -3753,12 +3510,12 @@ class Meganimus(QMainWindow):
             except psutil.NoSuchProcess:
                 self.real_portal_process = None
 
-        except (IOError, toml.TomlDecodeError):
+        except (IOError, tomlkit.exceptions.ParseError):
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR", name=portal_name))
         except Exception as e:
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_START_ERROR", error=str(e)))
 
-    def start_executor(self, executor_name, executor_type=None, executor_command_str=None):
+    def start_executor(self, executor_name, executor_command_str=None):
         settings = load_settings()
         if self.windowTitle().startswith(tr("PORTAL_STARTED", portal_name="").split("{portal_name}")[0].strip()):
             reply = QMessageBox.question(
@@ -3773,48 +3530,21 @@ class Meganimus(QMainWindow):
             else:
                 return
 
-        if executor_type is None:
-            executor_type = settings["executor"].get(f"{executor_name.lower()}_executor", "AppImage")
         if executor_command_str is None:
             executor_command_str = settings["executor"].get(f"{executor_name.lower()}_command", "").strip()
 
         print(tr("STARTING_PORTAL", name=executor_name))
 
-        # AppImage
-        if executor_type == "AppImage":
-            if not executor_command_str:
-                QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET", executor=executor_name))
-                return None
-            executor_path = Path(executor_command_str)
-            if not executor_path.exists():
-                QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_APPIMAGE_NOT_FOUND", path=str(executor_path)))
-                return None
-            command = [str(executor_path)]
+        if not executor_command_str:
+            QMessageBox.critical(None, tr("APP_NAME"), tr("EXECUTOR_PATH_NOT_SET", executor=executor_name))
+            return None
 
-        elif executor_type == "Snap":
-            snap_name = executor_command_str.split()[2] if executor_command_str.startswith("snap run") else executor_name
-            try:
-                subprocess.run(["snap", "list", snap_name], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except subprocess.CalledProcessError:
-                QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_SNAP_NOT_FOUND", name=snap_name))
-                return
-            command = executor_command_str.split()
+        executor_path = Path(executor_command_str)
+        if not executor_path.exists():
+            QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_APPIMAGE_NOT_FOUND", path=str(executor_path)))
+            return None
 
-        elif executor_type == "Flatpak":
-            flatpak_name = executor_command_str.split()[2] if executor_command_str.startswith("flatpak run") else executor_name
-            try:
-                subprocess.run(["flatpak", "info", flatpak_name], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except subprocess.CalledProcessError:
-                QMessageBox.critical(None, tr("APP_NAME"), tr("ERROR_EXECUTOR_FLATPAK_NOT_FOUND", name=flatpak_name))
-                return
-            command = executor_command_str.split()
-
-        else:
-            QMessageBox.warning(
-                None,
-                tr("APP_NAME"),
-                tr("EXECUTOR_VERSION_NOT_SELECTED", executor=executor_name))
-            return
+        command = [str(executor_path)]
 
         if hasattr(sys, '_MEIPASS'):
             env = os.environ.copy()
@@ -3822,6 +3552,7 @@ class Meganimus(QMainWindow):
             env.pop("QT_PLUGIN_PATH", None)
         else:
             env = os.environ.copy()
+
         debug_command = command.copy()
         print(tr("RUNNING_COMMAND", command=" ".join(debug_command)))
 
