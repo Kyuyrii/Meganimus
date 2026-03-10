@@ -5,7 +5,7 @@ import sys
 import os
 import locale
 import json
-import toml
+import tomlkit
 import subprocess
 import atexit
 import shutil
@@ -20,6 +20,7 @@ import uuid
 import re
 import shlex
 import random
+import dbus
 import tempfile
 from pathlib import Path
 from functools import partial
@@ -34,7 +35,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "1.6.8"
+__version__ = "1.7"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -63,12 +64,21 @@ else:
     meganimus_dir = Path.home() / "App" / "Meganimus"
     meganimus_home_dir = Path.home()
 
-meganimus_art_dir = meganimus_dir / "art"
-meganimus_gui_dir = meganimus_dir / "art" / "gui"
-meganimus_config_dir = meganimus_dir / "config"
-meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
-meganimus_executor_dir = meganimus_dir / "executor"
-meganimus_wineprefix_dir = meganimus_dir / "wineprefix"
+if os.environ.get("MEGANIMUS_USE_XDG_CONFIG_AND_XDG_DATA") == "1" and os.environ.get("container") == "flatpak":
+    meganimus_art_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "art"
+    meganimus_gui_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "art" / "gui"
+    meganimus_config_dir = Path(os.environ["XDG_CONFIG_HOME"]) / "Meganimus" / "config"
+    meganimus_settings_file = Path(os.environ["XDG_CONFIG_HOME"]) / "Meganimus" / "config" / "meganimus-settings.toml"
+    meganimus_executor_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "executor"
+    meganimus_wineprefix_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "wineprefix"
+
+else:
+    meganimus_art_dir = meganimus_dir / "art"
+    meganimus_gui_dir = meganimus_dir / "art" / "gui"
+    meganimus_config_dir = meganimus_dir / "config"
+    meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
+    meganimus_executor_dir = meganimus_dir / "executor"
+    meganimus_wineprefix_dir = meganimus_dir / "wineprefix"
 
 # Loads translations from external TOML files.
 def load_external_translations():
@@ -88,7 +98,7 @@ def load_external_translations():
                 try:
                     lang_code = toml_file.stem.replace("meganimus-translation-", "")
                     with open(toml_file, 'r', encoding='utf-8') as f:
-                        lang_data = toml.load(f)
+                        lang_data = tomlkit.load(f)
 
                     # Add to translations
                     external_translations[lang_code] = lang_data
@@ -233,6 +243,9 @@ def detect_default_settings() -> dict:
             "ppsspp_executor": "AppImage",
             "ppsspp_command": "/home/*/App/Meganimus/executor/PPSSPP.AppImage",
             "ppsspp_executor_args": "--fullscreen --pause-menu-exit",
+            "rmg_executor": "AppImage",
+            "rmg_command": "/home/*/App/Meganimus/executor/RMG.AppImage",
+            "rmg_executor_args": "--fullscreen",
             "rpcs3_executor": "AppImage",
             "rpcs3_command": "/home/*/App/Meganimus/executor/RPCS3.AppImage",
             "rpcs3_executor_args": "--no-gui --fullscreen",
@@ -257,7 +270,7 @@ def load_settings() -> dict:
 
     try:
         with open(meganimus_settings_file, "r", encoding="utf-8") as f:
-            data = toml.load(f)
+            data = tomlkit.load(f)
     except Exception:
         # First creation: save default settings
         save_settings(defaults)
@@ -295,7 +308,7 @@ def save_settings(data: dict) -> None:
     """Saves settings in TOML."""
     meganimus_config_dir.mkdir(parents=True, exist_ok=True)
     with open(meganimus_settings_file, "w", encoding="utf-8") as f:
-        toml.dump(data, f)
+        tomlkit.dump(data, f)
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
@@ -310,11 +323,11 @@ class SettingsDialog(QDialog):
         # Qt Style
         style_label = QLabel(tr("QT_STYLE"))
         self.style_combo = QComboBox()
-        self.style_combo.addItem(tr("DEFAULT_QT_STYLE"))
+        self.style_combo.addItem(tr("INDEFINITE"))
         self.style_combo.addItems(QStyleFactory.keys())
         saved_style = self.settings["design"].get("qt_style", "indefinite")
         if saved_style == "indefinite":
-            self.style_combo.setCurrentText(tr("DEFAULT_QT_STYLE"))
+            self.style_combo.setCurrentText(tr("INDEFINITE"))
         else:
             self.style_combo.setCurrentText(saved_style)
         top_layout.addRow(style_label, self.style_combo)
@@ -495,6 +508,17 @@ class SettingsDialog(QDialog):
                 },
                 "executor_args": "--fullscreen --pause-menu-exit",
             },
+            "RMG": {
+                "options": [
+                    (tr("APPIMAGE"), "AppImage"),
+                    ("Flatpak", "Flatpak"),
+                ],
+                "default_command": {
+                    "Snap": "",
+                    "Flatpak": "flatpak run com.github.Rosalie241.RMG",
+                },
+                "executor_args": "--fullscreen",
+            },
             "RPCS3": {
                 "options": [
                     (tr("APPIMAGE"), "AppImage"),
@@ -534,7 +558,6 @@ class SettingsDialog(QDialog):
             "Wine": {
                 "options": [
                     (tr("APPIMAGE"), "AppImage"),
-                    ("Snap", "Snap"),
                     ("Flatpak", "Flatpak"),
                 ],
                 "default_command": {
@@ -606,7 +629,6 @@ class SettingsDialog(QDialog):
 
             # Initializes saved values
             saved_executor = self.settings["executor"].get(f"{executor_name.lower()}_executor", "AppImage")
-            saved_command = self.settings["executor"].get(f"{executor_name.lower()}_command", "")
 
             # Find index for saved executor
             index = next((i for i in range(combo.count()) if combo.itemData(i) == saved_executor), 
@@ -665,7 +687,11 @@ class SettingsDialog(QDialog):
                 executor_command_str=executor_command_str)
 
     def save_and_close(self):
-        self.settings["design"]["qt_style"] = self.style_combo.currentText()
+        selected_style = self.style_combo.currentText()
+        if selected_style == tr("INDEFINITE"):
+            self.settings["design"]["qt_style"] = 'indefinite'
+        else:
+            self.settings["design"]["qt_style"] = selected_style
         selected_index = self.lang_combo.currentIndex()
         self.settings["design"]["language"] = list(SUPPORTED_LANGUAGES.values())[selected_index]
         self.settings["design"]["layout_mode"] = ["classic", "grid", "list"][self.layout_mode_combo.currentIndex()]
@@ -686,8 +712,7 @@ class SettingsDialog(QDialog):
         QMessageBox.information(
             self,
             tr("APP_NAME"),
-            tr("SETTINGS_SAVED_RESTART")
-        )
+            tr("SETTINGS_SAVED_RESTART"))
         self.accept()
 
 class AddPortalDialog(QDialog):
@@ -716,9 +741,8 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "Wine"]
-        for executor in executors:
-            self.executor_combo.addItem(executor, userData=executor)
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        self.executor_combo.addItems(executors)
 
         self.main_layout.addWidget(self.executor_label, 1, 0)
         self.main_layout.addWidget(self.executor_combo, 1, 1, 1, 2)
@@ -837,9 +861,8 @@ class AddPortalDialog(QDialog):
 
         # Executor saved
         saved_executor = self.portal_data.get('executor', 'Linux')
-        index_executor = self.executor_combo.findData(saved_executor)
-        if index_executor != -1:
-            self.executor_combo.setCurrentIndex(index_executor)
+        index_executor = self.executor_combo.findText(saved_executor)
+        self.executor_combo.setCurrentIndex(index_executor)
 
         env_vars_text = self.portal_data.get('env_vars', '').strip()
         self.env_vars_input.setText(env_vars_text)
@@ -924,7 +947,7 @@ class AddPortalDialog(QDialog):
 
         return {
             "name": self.name_input.text(),
-            "executor": self.executor_combo.currentData(),
+            "executor": self.executor_combo.currentText(),
             "game_path": self.game_path_input.text(),
             "art_path": art_path,
             "gui_path": gui_path,
@@ -1042,7 +1065,7 @@ class AddPortalDialog(QDialog):
             # Save TOML
             try:
                 with open(portal_file, 'w', encoding="utf-8") as f:
-                    toml.dump(portal_data, f)
+                    tomlkit.dump(portal_data, f)
             except Exception as e:
                 QMessageBox.critical(self, tr("APP_NAME"), tr("NAME_INVALID", error=str(e)))
                 return
@@ -1083,7 +1106,7 @@ class AddPortalDialog(QDialog):
 
         # Load portal data before removing
         with open(portal_file, encoding='utf-8') as f:
-            portal_data = toml.load(f)
+            portal_data = tomlkit.load(f)
 
         # Remove the configuration file
         portal_file.unlink()
@@ -1127,9 +1150,8 @@ class MultipleCreatePortalsDialog(QDialog):
         # Executor and combobox
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "Wine"]
-        for executor in executors:
-            self.executor_combo.addItem(executor, userData=executor)
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        self.executor_combo.addItems(executors)
         top_grid.addWidget(executor_label, 0, 0)
         top_grid.addWidget(self.executor_combo, 0, 1)
 
@@ -1216,21 +1238,6 @@ class MultipleCreatePortalsDialog(QDialog):
         name_layout.addWidget(name_input)
         layout.addLayout(name_layout)
 
-        # FPS HUD
-        fps_layout = QHBoxLayout()
-        show_fps_cb = QCheckBox(tr("SHOW_FPS_OPTION"))
-        fps_hud_combo = QComboBox()
-        fps_hud_options = [
-            ("FPS_GALLIUM_HUD", tr("FPS_GALLIUM_HUD")),
-        ]
-        for id, text in fps_hud_options:
-            fps_hud_combo.addItem(text, id)
-        fps_hud_combo.setEnabled(False)
-        show_fps_cb.stateChanged.connect(partial(fps_hud_combo.setEnabled))
-        fps_layout.addWidget(show_fps_cb)
-        fps_layout.addWidget(fps_hud_combo)
-        layout.addLayout(fps_layout)
-
         # QTreeWidgetItem with child containing widget
         parent_item = QTreeWidgetItem(self.file_list)
         parent_item.setText(0, Path(path).name)
@@ -1242,8 +1249,6 @@ class MultipleCreatePortalsDialog(QDialog):
         # Save references
         parent_item.path = path
         parent_item.name_input = name_input
-        parent_item.show_fps_cb = show_fps_cb
-        parent_item.fps_hud_combo = fps_hud_combo
 
     def save_multiple(self):
         # Executor and item validation
@@ -1288,7 +1293,7 @@ class MultipleCreatePortalsDialog(QDialog):
             # Test if you can write the file
             try:
                 with open(test_path, 'w', encoding="utf-8") as f:
-                    toml.dump({}, f)
+                    tomlkit.dump({}, f)
                 test_path.unlink()
             except Exception as e:
                 QMessageBox.critical(
@@ -1311,15 +1316,15 @@ class MultipleCreatePortalsDialog(QDialog):
             # Save TOML
             try:
                 with open(file_path, 'w', encoding="utf-8") as f:
-                    toml.dump({
+                    tomlkit.dump({
                         "name": name,
                         "executor": executor,
                         "game_path": item.path,
                         "art_path": "",
                         "gui_path": "",
                         "language": selected_lang,
-                        "show_fps": item.show_fps_cb.isChecked(),
-                        "fps_hud_type": item.fps_hud_combo.currentData() or "",
+                        "show_fps": False,
+                        "fps_hud_type": "",
                         "env_vars": "",
                         "portal_args": ""
                     }, f)
@@ -1336,7 +1341,7 @@ class MultipleCreatePortalsDialog(QDialog):
         if file_path.exists():
             return
         with open(file_path, 'w', encoding="utf-8") as f:
-            toml.dump(data, f)
+            tomlkit.dump(data, f)
 
 class MultipleRemovePortalDialog(QDialog):
     def __init__(self, parent=None):
@@ -1411,7 +1416,7 @@ class MultipleRemovePortalDialog(QDialog):
         for portal_file in portal_files:
             try:
                 with open(portal_file, encoding="utf-8") as f:
-                    data = toml.load(f)
+                    data = tomlkit.load(f)
                 name = data.get("name", portal_file.stem)
                 cb = QCheckBox(name)
                 cb.portal_file = portal_file
@@ -1574,13 +1579,10 @@ class MultipleEditPortalDialog(QDialog):
         # Executor
         self.executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-
-        # List of available executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "Wine"]
-        self.executor_combo.insertItem(0, tr("DO_NOT_CHANGE"))
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        self.executor_combo.addItem(tr("DO_NOT_CHANGE"))
+        self.executor_combo.addItems(executors)
         self.executor_combo.setCurrentIndex(0)
-        for executor in executors:
-            self.executor_combo.addItem(executor, userData=executor)
         right_layout.addWidget(self.executor_label, row, 0)
         right_layout.addWidget(self.executor_combo, row, 1, 1, 2)
         row += 1
@@ -1713,7 +1715,7 @@ class MultipleEditPortalDialog(QDialog):
         for name, cb in self.portal_checkboxes.items():
             try:
                 with open(cb.portal_file, encoding="utf-8") as f:
-                    data = toml.load(f)
+                    data = tomlkit.load(f)
                 executor = data.get("executor", "Linux")
             except Exception:
                 executor = "Linux"
@@ -1782,7 +1784,7 @@ class MultipleEditPortalDialog(QDialog):
         for cb in self.portal_checkboxes.values():
             try:
                 with open(cb.portal_file, encoding="utf-8") as f:
-                    data = toml.load(f)
+                    data = tomlkit.load(f)
                 executor = data.get("executor", "Linux")
                 executors.add(executor)
             except Exception:
@@ -1810,7 +1812,7 @@ class MultipleEditPortalDialog(QDialog):
         for portal_file in portal_files:
             try:
                 with open(portal_file, encoding="utf-8") as f:
-                    data = toml.load(f)
+                    data = tomlkit.load(f)
                 name = data.get("name", portal_file.stem)
                 cb = QCheckBox(name)
                 cb.portal_file = portal_file
@@ -1862,7 +1864,7 @@ class MultipleEditPortalDialog(QDialog):
 
         for cb in selected:
             with open(cb.portal_file, encoding="utf-8") as f:
-                data = toml.load(f)
+                data = tomlkit.load(f)
 
             # Apply fields
             # Executor
@@ -1966,7 +1968,7 @@ class MultipleEditPortalDialog(QDialog):
 
             # Save TOML
             with open(cb.portal_file, "w", encoding="utf-8") as f:
-                toml.dump(data, f)
+                tomlkit.dump(data, f)
 
         self.update_executor_filter()
         self.update_portal_list()
@@ -2122,7 +2124,7 @@ class PortalInfoViewerDialog(QDialog):
         for file in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 with open(file, "r", encoding="utf-8") as f:
-                    inv = toml.load(f)
+                    inv = tomlkit.load(f)
                     inv["__filename"] = file.name
                     portals.append(inv)
             except Exception:
@@ -2174,7 +2176,7 @@ class PortalInfoViewerDialog(QDialog):
                 if file_path.exists():
                     try:
                         with open(file_path, "r", encoding="utf-8") as f:
-                            data = toml.load(f)
+                            data = tomlkit.load(f)
                         # Search for content only in these fields
                         for key in ["game_path", "language", "env_vars", "portal_args"]:
                             value = str(data.get(key, "")).lower()
@@ -2215,7 +2217,7 @@ class PortalInfoViewerDialog(QDialog):
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
-                inv = toml.load(f)
+                inv = tomlkit.load(f)
         except Exception:
             self.text_box.clear()
             return
@@ -2498,7 +2500,7 @@ class ShortcutManager(QDialog):
         for f in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 content = f.read_text(encoding="utf-8")
-                data = toml.loads(content)
+                data = tomlkit.loads(content)
                 name = data.get("name")
                 gui_path = data.get("gui_path", "")
                 safe_portal_name = f.stem.replace("portal-info-", "")
@@ -2605,7 +2607,7 @@ class ShortcutManager(QDialog):
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
-                tr("ERROR_CREATING_PATH", path=desktop_dir)
+                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=desktop_dir)
             )
             return
 
@@ -2614,7 +2616,7 @@ class ShortcutManager(QDialog):
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
-                tr("ERROR_CREATING_PATH", path=dot_config_dir)
+                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=dot_config_dir)
             )
             return
 
@@ -2623,7 +2625,7 @@ class ShortcutManager(QDialog):
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
-                tr("ERROR_CREATING_PATH", path=dot_local_dir)
+                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=dot_local_dir)
             )
             return
         
@@ -2937,7 +2939,6 @@ class Meganimus(QMainWindow):
         self.search_widget = QWidget()
         self.search_layout = QHBoxLayout(self.search_widget)
         self.search_layout.setContentsMargins(0, 0, 0, 0)
-        self.search_layout.setSpacing(0)
 
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText(tr("SEARCH"))
@@ -3180,7 +3181,7 @@ class Meganimus(QMainWindow):
         if mounted_iso_info.exists():
             try:
                 with mounted_iso_info.open("r", encoding="utf-8") as f:
-                    iso_info = toml.load(f)
+                    iso_info = tomlkit.load(f)
 
                 loop_device = iso_info.get("loop_device")
                 if loop_device:
@@ -3231,6 +3232,7 @@ class Meganimus(QMainWindow):
             meganimus_executor_dir / "mGBA.AppImage.home",
             meganimus_executor_dir / "PCSX2.AppImage.home",
             meganimus_executor_dir / "PPSSPP.AppImage.home",
+            meganimus_executor_dir / "RMG.AppImage.home",
             meganimus_executor_dir / "RPCS3.AppImage.home",
             meganimus_executor_dir / "Ryubing.AppImage.home",
             meganimus_executor_dir / "Snes9x.AppImage.home",
@@ -3289,7 +3291,7 @@ class Meganimus(QMainWindow):
         for portal_file in portal_files:
             try:
                 with open(portal_file, encoding="utf-8") as f:
-                    portal_data = toml.load(f)
+                    portal_data = tomlkit.load(f)
 
                 portals.append((portal_data, portal_file))
                 
@@ -3319,7 +3321,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
@@ -3340,49 +3342,53 @@ class Meganimus(QMainWindow):
         for toml_file in meganimus_config_dir.glob("*.toml"):
             try:
                 with open(toml_file, 'r+', encoding='utf-8') as f:
-                    data = toml.load(f)
+                    data = tomlkit.load(f)
                     modified = False
                     
                     # Handle meganimus-settings.toml executor commands
                     if toml_file.name == "meganimus-settings.toml" and 'executor' in data:
                         executor_data = data['executor']
-                        for key in executor_data:
-                            if key.endswith('_command') and '/App/Meganimus/' in executor_data[key]:
-                                old_base = executor_data[key].split('/App/Meganimus/')[0]
-                                if old_base != current_base:
-                                    executor_data[key] = executor_data[key].replace(old_base, current_base, 1)
-                                    modified = True
+                        if isinstance(executor_data, dict):
+                            for key in executor_data:
+                                if key.endswith('_command') and isinstance(executor_data[key], str):
+                                    if '/App/Meganimus/' in executor_data[key]:
+                                        old_base = executor_data[key].split('/App/Meganimus/')[0]
+                                        if old_base != current_base:
+                                            executor_data[key] = executor_data[key].replace(old_base, current_base, 1)
+                                            modified = True
                     
                     # Handle portal files
                     for field in ['game_path', 'art_path', 'gui_path']:
-                        if field in data and '/App/Meganimus/' in data[field]:
-                            old_base = data[field].split('/App/Meganimus/')[0]
-                            if old_base != current_base:
-                                data[field] = data[field].replace(old_base, current_base, 1)
-                                modified = True
+                        if field in data and isinstance(data[field], str):
+                            if '/App/Meganimus/' in data[field]:
+                                old_base = data[field].split('/App/Meganimus/')[0]
+                                if old_base != current_base:
+                                    data[field] = data[field].replace(old_base, current_base, 1)
+                                    modified = True
                     
                     # Handle WINEPREFIX in env_vars
-                    if 'WINEPREFIX=' in data['env_vars'] and '/App/Meganimus/' in data['env_vars']:
-                        env_vars = data['env_vars']
-                        
-                        # Find where WINEPREFIX path starts and ends
-                        prefix_start = env_vars.find('WINEPREFIX=') + 11
-                        prefix_end = env_vars.find(' ', prefix_start)
-                        if prefix_end == -1:
-                            prefix_end = len(env_vars)
+                    if 'env_vars' in data and isinstance(data['env_vars'], str):
+                        if 'WINEPREFIX=' in data['env_vars'] and '/App/Meganimus/' in data['env_vars']:
+                            env_vars = data['env_vars']
+                            
+                            # Find where WINEPREFIX path starts and ends
+                            prefix_start = env_vars.find('WINEPREFIX=') + 11
+                            prefix_end = env_vars.find(' ', prefix_start)
+                            if prefix_end == -1:
+                                prefix_end = len(env_vars)
 
-                        wineprefix_path = env_vars[prefix_start:prefix_end]
+                            wineprefix_path = env_vars[prefix_start:prefix_end]
 
-                        if '/App/Meganimus/' in wineprefix_path:
-                            old_base = wineprefix_path.split('/App/Meganimus/')[0]
-                            if old_base != current_base:
-                                new_path = wineprefix_path.replace(old_base, current_base, 1)
-                                data['env_vars'] = env_vars[:prefix_start] + new_path + env_vars[prefix_end:]
-                                modified = True
+                            if '/App/Meganimus/' in wineprefix_path:
+                                old_base = wineprefix_path.split('/App/Meganimus/')[0]
+                                if old_base != current_base:
+                                    new_path = wineprefix_path.replace(old_base, current_base, 1)
+                                    data['env_vars'] = env_vars[:prefix_start] + new_path + env_vars[prefix_end:]
+                                    modified = True
 
                     if modified:
                         f.seek(0)
-                        toml.dump(data, f)
+                        tomlkit.dump(data, f)
                         f.truncate()
             except:
                 continue
@@ -3403,7 +3409,7 @@ class Meganimus(QMainWindow):
 
         try:
             with portal_file_path.open('r', encoding='utf-8') as f:
-                portal_data = toml.load(f)
+                portal_data = tomlkit.load(f)
         except (IOError, toml.TomlDecodeError):
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR", name=portal_name))
             return
@@ -3439,7 +3445,7 @@ class Meganimus(QMainWindow):
 
         try:
             with portal_file_path.open('r', encoding='utf-8') as f:
-                portal_data = toml.load(f)
+                portal_data = tomlkit.load(f)
             print(tr("PORTAL_INFO_LOADED", name=portal_name))
 
             game_path_full = Path(portal_data['game_path'])
@@ -3517,7 +3523,7 @@ class Meganimus(QMainWindow):
                 # Save mounted ISO info
                 mounted_iso_info = meganimus_config_dir / "mounted_iso_info.toml"
                 with mounted_iso_info.open("w", encoding="utf-8") as f:
-                    toml.dump({
+                    tomlkit.dump({
                         "iso_path": str(iso_path),
                         "loop_device": loop_device,
                         "mount_point": str(mount_point)
@@ -3586,7 +3592,7 @@ class Meganimus(QMainWindow):
                 # Save mounted ISO info
                 mounted_iso_info = meganimus_config_dir / "mounted_iso_info.toml"
                 with mounted_iso_info.open("w", encoding="utf-8") as f:
-                    toml.dump({
+                    tomlkit.dump({
                         "iso_path": str(iso_path),
                         "loop_device": loop_device,
                         "mount_point": str(mount_point)
@@ -3904,7 +3910,7 @@ class Meganimus(QMainWindow):
 
     def run_executors_auto_transfer(self):
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
 
         # Check which executors are missing
         missing_executors = []
@@ -3941,13 +3947,13 @@ class Meganimus(QMainWindow):
             # Transfer sky info first
             response = requests.get(sky_url, timeout=30)
             response.raise_for_status()
-            sky_data = toml.loads(response.text)
+            sky_data = tomlkit.loads(response.text)
             x86_64_version = sky_data.get("x86_64", {})
 
             # Load or create earth info
             if earth_file.exists():
                 with open(earth_file, "r", encoding="utf-8") as f:
-                    earth_data = toml.load(f)
+                    earth_data = tomlkit.load(f)
                 earth_version = earth_data.get("x86_64", {})
             else:
                 earth_version = {}
@@ -4084,7 +4090,7 @@ class Meganimus(QMainWindow):
 
                 try:
                     with open(earth_file, "w", encoding="utf-8") as f:
-                        toml.dump(new_earth, f)
+                        tomlkit.dump(new_earth, f)
                 except Exception as e:
                     print(tr("EXECUTOR_EARTH_SAVE_ERROR", error=str(e)))
 
@@ -4120,7 +4126,7 @@ class Meganimus(QMainWindow):
         for toml_file in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 with open(toml_file, "r", encoding="utf-8") as fh:
-                    portal = toml.load(fh)
+                    portal = tomlkit.load(fh)
                 portal_name = portal.get("name") or portal.get("display_name") or portal.get("id")
                 art_path = portal.get("art_path", "")
                 gui_path = portal.get("gui_path", "")
@@ -4316,7 +4322,7 @@ class Meganimus(QMainWindow):
 
                 try:
                     with open(toml_file, "r", encoding="utf-8") as fh:
-                        portal_toml = toml.load(fh)
+                        portal_toml = tomlkit.load(fh)
                 except Exception:
                     portal_toml = {}
 
@@ -4347,7 +4353,7 @@ class Meganimus(QMainWindow):
                 if copied_hero or copied_icon:
                     try:
                         with open(toml_file, "w", encoding="utf-8") as fh:
-                            toml.dump(portal_toml, fh)
+                            tomlkit.dump(portal_toml, fh)
                     except Exception:
                         pass
 

@@ -5,7 +5,7 @@ rm -rf AppDir build dist venv Meganimus.spec Meganimus*.AppImage
 
 python3 -m venv venv
 source venv/bin/activate
-pip install pyinstaller PyQt6==6.9.1 toml requests psutil dbus-python
+pip install pyinstaller PyQt6==6.9.1 tomlkit requests psutil dbus-python
 
 # I'm using Kvantum from lxqt-support-core24 because it's built without KDE dependencies.
 pyinstaller --onefile --windowed --name Meganimus \
