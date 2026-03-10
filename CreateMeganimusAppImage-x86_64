@@ -5,11 +5,16 @@ rm -rf AppDir build dist venv Meganimus.spec Meganimus*.AppImage
 
 python3 -m venv venv
 source venv/bin/activate
-pip install pyinstaller PyQt6==6.9.1 tomlkit requests psutil dbus-python
+pip install pyinstaller PyQt6==6.10.1 tomlkit requests psutil dbus-python
 
 # I'm using Kvantum from lxqt-support-core24 because it's built without KDE dependencies.
 pyinstaller --onefile --windowed --name Meganimus \
+  --add-binary "/snap/lxqt-support-core24/current/usr/lib/x86_64-linux-gnu/qt6/plugins/iconengines/libQt6XdgIconPlugin.so:PyQt6/Qt6/plugins/iconengines" \
+  --add-binary "/snap/lxqt-support-core24/current/usr/lib/x86_64-linux-gnu/qt6/plugins/platformthemes/libqtlxqt.so:PyQt6/Qt6/plugins/platformthemes" \
   --add-binary "/snap/lxqt-support-core24/current/usr/lib/x86_64-linux-gnu/qt6/plugins/styles/libkvantum.so:PyQt6/Qt6/plugins/styles" \
+  --add-data "/snap/lxqt-support-core24/current/usr/lib/x86_64-linux-gnu/lib*:." \
+  --add-binary "/snap/kf6-core24/current/usr/lib/x86_64-linux-gnu/qt6/plugins/platformthemes/libqxdgdesktopportal.so:PyQt6/Qt6/plugins/platformthemes" \
+  --add-data "/snap/kf6-core24/current/usr/share/qt6/translations/*:PyQt6/Qt6/translations" \
   meganimus
 
 if ! command -v appimagetool &> /dev/null; then
@@ -63,6 +68,7 @@ fi
 
 export PATH="$APPDIR/bin:$PATH"
 export APPIMAGE_EXTRACT_AND_RUN=1
+export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 
 mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
 mkdir -p "$HOME/.local/share/applications"
