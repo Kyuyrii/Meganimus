@@ -35,7 +35,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.0"
+__version__ = "2.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -727,7 +727,7 @@ class AddPortalDialog(QDialog):
             str(meganimus_wineprefix_dir))
         if folder_path:
             current_env = self.env_vars_input.text().strip()
-            wine_prefix = f"WINEPREFIX={folder_path}"
+            wine_prefix = f'WINEPREFIX="{folder_path}"'
             
             if current_env:
                 self.env_vars_input.setText(f"{current_env} {wine_prefix}")
@@ -3425,7 +3425,8 @@ class Meganimus(QMainWindow):
             # Extra variables
             env_vars_str = portal_data.get('env_vars', '').strip()
             if env_vars_str:
-                for item in env_vars_str.split():
+                env_items = shlex.split(env_vars_str)
+                for item in env_items:
                     if "=" in item:
                         key, value = item.split("=", 1)
                         env[key] = value
@@ -3473,7 +3474,8 @@ class Meganimus(QMainWindow):
                     debug_command.append(f"{var}={env[var]}")
 
             if env_vars_str:
-                for item in env_vars_str.split():
+                env_items = shlex.split(env_vars_str)
+                for item in env_items:
                     if '=' in item:
                         debug_command.append(item)
 
