@@ -35,7 +35,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.1"
+__version__ = "2.2"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -2499,7 +2499,7 @@ class ShortcutManager(QDialog):
                 directory_content = "\n".join([
                     "[Desktop Entry]",
                     "Name=Meganimus",
-                    "Icon=io.github.kyuyrii.meganimus.svg"
+                    "Icon=io.github.kyuyrii.meganimus"
                 ])
                 directory_file_path.write_text(directory_content, encoding="utf-8")
             except Exception as e:
