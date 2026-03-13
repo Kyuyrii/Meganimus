@@ -35,7 +35,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.3"
+__version__ = "2.4"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -60,21 +60,12 @@ else:
     meganimus_dir = Path.home() / "App" / "Meganimus"
     meganimus_home_dir = Path.home()
 
-if os.environ.get("MEGANIMUS_USE_XDG_CONFIG_AND_XDG_DATA") == "1" and os.environ.get("container") == "flatpak":
-    meganimus_art_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "art"
-    meganimus_gui_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "art" / "gui"
-    meganimus_config_dir = Path(os.environ["XDG_CONFIG_HOME"]) / "Meganimus" / "config"
-    meganimus_settings_file = Path(os.environ["XDG_CONFIG_HOME"]) / "Meganimus" / "config" / "meganimus-settings.toml"
-    meganimus_executor_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "executor"
-    meganimus_wineprefix_dir = Path(os.environ["XDG_DATA_HOME"]) / "Meganimus" / "wineprefix"
-
-else:
-    meganimus_art_dir = meganimus_dir / "art"
-    meganimus_gui_dir = meganimus_dir / "art" / "gui"
-    meganimus_config_dir = meganimus_dir / "config"
-    meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
-    meganimus_executor_dir = meganimus_dir / "executor"
-    meganimus_wineprefix_dir = meganimus_dir / "wineprefix"
+meganimus_art_dir = meganimus_dir / "art"
+meganimus_gui_dir = meganimus_dir / "art" / "gui"
+meganimus_config_dir = meganimus_dir / "config"
+meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
+meganimus_executor_dir = meganimus_dir / "executor"
+meganimus_wineprefix_dir = meganimus_dir / "wineprefix"
 
 # Loads translations from external TOML files.
 def load_external_translations():
@@ -239,6 +230,8 @@ def detect_default_settings() -> dict:
             "snes9x_executor_args": "",
             "wine_command": "/home/*/App/Meganimus/executor/Wine.AppImage",
             "wine_executor_args": "",
+            "xemu_command": "/home/*/App/Meganimus/executor/xemu.AppImage",
+            "xemu_executor_args": "-full-screen -dvd_path",
         },
         "other": {
             "sgdb_apikey": "",
@@ -418,6 +411,9 @@ class SettingsDialog(QDialog):
             "Wine": {
                 "executor_args": "",
             },
+            "xemu": {
+                "executor_args": "-full-screen -dvd_path",
+            },
         }
 
         # Store widgets for each executor
@@ -541,7 +537,7 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
         self.executor_combo.addItems(executors)
 
         self.main_layout.addWidget(self.executor_label, 1, 0)
@@ -950,7 +946,7 @@ class MultipleCreatePortalsDialog(QDialog):
         # Executor and combobox
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
         self.executor_combo.addItems(executors)
         top_grid.addWidget(executor_label, 0, 0)
         top_grid.addWidget(self.executor_combo, 0, 1)
@@ -1379,7 +1375,7 @@ class MultipleEditPortalDialog(QDialog):
         # Executor
         self.executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
         self.executor_combo.addItem(tr("DO_NOT_CHANGE"))
         self.executor_combo.addItems(executors)
         self.executor_combo.setCurrentIndex(0)
@@ -2272,13 +2268,13 @@ class ShortcutManager(QDialog):
 
         # Create/recreate checkboxes for this view.
         new_checkboxes = {}
-        for inv in sorted(self.portals.keys()):
-            cb = QCheckBox(inv)
+        for portal in sorted(self.portals.keys()):
+            cb = QCheckBox(portal)
             # Combine saved states with existing shortcuts
-            was_checked = self.checkbox_states[self.current_view].get(inv, False)
-            exists_in_folder = inv in existing_desktops
+            was_checked = self.checkbox_states[self.current_view].get(portal, False)
+            exists_in_folder = portal in existing_desktops
             cb.setChecked(was_checked or exists_in_folder)
-            new_checkboxes[inv] = cb
+            new_checkboxes[portal] = cb
         self.checkbox_widgets[self.current_view] = new_checkboxes
 
         # Add only widgets filtered by the search.
@@ -2294,21 +2290,25 @@ class ShortcutManager(QDialog):
 
     # Loading and saving
     def load_portals(self) -> dict:
-        invs = {}
+        portals = {}
         if not meganimus_config_dir.exists():
-            return invs
+            return portals
         for f in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 content = f.read_text(encoding="utf-8")
                 data = tomlkit.loads(content)
                 name = data.get("name")
                 gui_path = data.get("gui_path", "")
+                game_path = data.get("game_path", "")
                 safe_portal_name = f.stem.replace("portal-info-", "")
                 if name:
-                    invs[name] = {"gui_path": gui_path, "safe_portal_name": safe_portal_name}
+                    portals[name] = {
+                        "gui_path": gui_path,
+                        "game_path": game_path,
+                        "safe_portal_name": safe_portal_name}
             except Exception:
                 continue
-        return invs
+        return portals
 
     def load_shortcut_manager_info(self):
         # Load directories from TOML settings.
@@ -2532,6 +2532,7 @@ class ShortcutManager(QDialog):
 
         portal_data = self.portals.get(name, {})
         safe_name = portal_data.get("safe_portal_name", "")
+        game_path = portal_data.get("game_path", "")
 
         desktop_file = folder / f"portal-{safe_name}.desktop"
 
@@ -2555,6 +2556,7 @@ class ShortcutManager(QDialog):
             f"Name={name}",
             f"Exec={current_meganimus}",
             f"Icon={gui_path}",
+            f"StartupWMClass={os.path.basename(game_path)}",
             f"Categories={categories}",
             "Keywords=gaming;portal;",
             "Type=Application",
@@ -3120,7 +3122,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
@@ -3136,7 +3138,7 @@ class Meganimus(QMainWindow):
 
     def fix_meganimus_paths(self):
         # Fix paths in .toml files if they don't match current meganimus_dir
-        current_base = str(meganimus_dir).replace('/App/Meganimus', '')
+        current_base = str(meganimus_home_dir)
 
         for toml_file in meganimus_config_dir.glob("*.toml"):
             try:
@@ -3642,7 +3644,7 @@ class Meganimus(QMainWindow):
 
     def run_executors_auto_transfer(self):
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
 
         # Check which executors are missing
         missing_executors = []
