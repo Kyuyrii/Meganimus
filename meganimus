@@ -35,7 +35,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.4"
+__version__ = "2.4.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -3038,6 +3038,7 @@ class Meganimus(QMainWindow):
             meganimus_executor_dir / "Ryubing.AppImage.home",
             meganimus_executor_dir / "Snes9x.AppImage.home",
             meganimus_executor_dir / "Wine.AppImage.home",
+            meganimus_executor_dir / "xemu.AppImage.home",
             meganimus_wineprefix_dir,
         ]
 
