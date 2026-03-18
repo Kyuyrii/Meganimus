@@ -7,7 +7,6 @@ import locale
 import json
 import tomlkit
 import subprocess
-import atexit
 import shutil
 import requests
 import tarfile
@@ -35,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.4.1"
+__version__ = "2.4.2"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -887,18 +886,12 @@ class AddPortalDialog(QDialog):
         msg.setWindowTitle(tr("REMOVE"))
         msg.setText(tr("DELETE_PORTAL_CONFIRM_MESSAGE", name=portal_name))
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        msg.button(QMessageBox.StandardButton.Yes).setText(tr("YES_BUTTON"))
-        msg.button(QMessageBox.StandardButton.No).setText(tr("NO_BUTTON"))
 
         if msg.exec() != QMessageBox.StandardButton.Yes:
             return
 
         safe_portal_name = portal_name.replace(" ", "_").lower()
         portal_file = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
-
-        if not portal_file.exists():
-            QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR"))
-            return
 
         # Load portal data before removing
         with open(portal_file, encoding='utf-8') as f:
@@ -1270,8 +1263,6 @@ class MultipleRemovePortalDialog(QDialog):
         msg.setWindowTitle(tr("MULTIPLE_PORTAL_REMOVER"))
         msg.setText(tr("DELETE_PORTALS_CONFIRM_MESSAGE"))
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        msg.button(QMessageBox.StandardButton.Yes).setText(tr("YES_BUTTON"))
-        msg.button(QMessageBox.StandardButton.No).setText(tr("NO_BUTTON"))
 
         if msg.exec() != QMessageBox.StandardButton.Yes:
             return
@@ -2818,7 +2809,6 @@ class Meganimus(QMainWindow):
         else:
             self.show()
 
-        atexit.register(self.kill_portal_process_on_exit)
         self.transfer_successful = False
 
         self.inhibit_cookie = None
@@ -2890,8 +2880,7 @@ class Meganimus(QMainWindow):
                 self,
                 tr("APP_NAME"),
                 tr("CONFIRM_CLOSE_MESSAGE"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
                 self.stop_execution()
                 save_settings(settings)
@@ -3010,11 +2999,6 @@ class Meganimus(QMainWindow):
             finally:
                 # Remove info file no matter what
                 mounted_iso_info.unlink(missing_ok=True)
-
-    def kill_portal_process_on_exit(self):
-        if hasattr(self, "portal_process") and self.portal_process and self.portal_process.poll() is None:
-            print(tr("MEGANIMUS_CLOSED"))
-            self.stop_execution()
 
     def setup_directories(self):
         """Creates the Meganimus directory structure"""
@@ -3203,18 +3187,14 @@ class Meganimus(QMainWindow):
     def edit_portal(self):
         portal_name = self.get_selected_portal()
         if not portal_name:
-            QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTAL_SELECTED_ERROR"))
+            QMessageBox.information(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
             return
 
         safe_portal_name = portal_name.replace(" ", "_").lower()
         portal_file_path = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
 
-        try:
-            with portal_file_path.open('r', encoding='utf-8') as f:
-                portal_data = tomlkit.load(f)
-        except (IOError, tomlkit.exceptions.ParseError):
-            QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR", name=portal_name))
-            return
+        with portal_file_path.open('r', encoding='utf-8') as f:
+            portal_data = tomlkit.load(f)
 
         dialog = AddPortalDialog(self, portal_data)
         dialog.portal_saved.connect(self.load_portals)
@@ -3227,8 +3207,7 @@ class Meganimus(QMainWindow):
                 self,
                 tr("APP_NAME"),
                 tr("PORTAL_ALREADY_ACTIVE"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
             if reply == QMessageBox.StandardButton.Yes:
                 self.stop_execution()
@@ -3236,7 +3215,7 @@ class Meganimus(QMainWindow):
                 return
 
         if not item_or_name:
-            QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTAL_SELECTED_ERROR"))
+            QMessageBox.information(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
             return
 
         portal_name = item_or_name.text() if isinstance(item_or_name, QListWidgetItem) else str(item_or_name)
@@ -3514,8 +3493,6 @@ class Meganimus(QMainWindow):
             except psutil.NoSuchProcess:
                 self.real_portal_process = None
 
-        except (IOError, tomlkit.exceptions.ParseError):
-            QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_INFO_ERROR", name=portal_name))
         except Exception as e:
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_START_ERROR", error=str(e)))
 
@@ -3526,8 +3503,7 @@ class Meganimus(QMainWindow):
                 self,
                 tr("APP_NAME"),
                 tr("PORTAL_ALREADY_ACTIVE"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
             if reply == QMessageBox.StandardButton.Yes:
                 self.stop_execution()
@@ -3586,7 +3562,7 @@ class Meganimus(QMainWindow):
     def start_selected_portal(self):
         portal_name = self.get_selected_portal()
         if not portal_name:
-            QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTAL_SELECTED_ERROR"))
+            QMessageBox.information(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
             return
 
         self.start_portal(portal_name)
@@ -3658,9 +3634,7 @@ class Meganimus(QMainWindow):
                 self,
                 tr("APP_NAME"),
                 tr("EXECUTOR_MISSING"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if confirm != QMessageBox.StandardButton.Yes:
                 return
         else:
@@ -3668,9 +3642,7 @@ class Meganimus(QMainWindow):
                 self,
                 tr("APP_NAME"),
                 tr("EXECUTOR_CHECK_UPDATES"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if confirm != QMessageBox.StandardButton.Yes:
                 return
 
@@ -3849,11 +3821,11 @@ class Meganimus(QMainWindow):
         settings = load_settings()
         api_key = settings["other"].get("sgdb_apikey", "").strip()
         if not api_key:
-            QMessageBox.warning(self, tr("APP_NAME"), tr("API_KEY_SAVE_FIRST"))
+            QMessageBox.information(self, tr("APP_NAME"), tr("API_KEY_SAVE_FIRST"))
             return
 
         if not any(meganimus_config_dir.glob("portal-info-*.toml")):
-            QMessageBox.warning(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
+            QMessageBox.information(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
             return
 
         # Portals list
@@ -3881,9 +3853,7 @@ class Meganimus(QMainWindow):
             self,
             tr("APP_NAME"),
             tr("AUTO_TRANSFER_EXPLAIN"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm != QMessageBox.StandardButton.Yes:
             return
 
@@ -4157,8 +4127,7 @@ class Meganimus(QMainWindow):
                     self,
                     tr("APP_NAME"),
                     tr("NEW_VERSION_AVAILABLE", version=latest_tag),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-                )
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
                 if reply == QMessageBox.StandardButton.Yes:
                     subprocess.Popen(['xdg-open', 'https://github.com/Kyuyrii/Meganimus/releases'])
         except Exception as e:
