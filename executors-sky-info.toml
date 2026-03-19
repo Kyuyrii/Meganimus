@@ -2,7 +2,7 @@
 azaharplus_current = "https://github.com/AzaharPlus/AzaharPlus/releases/download/AZAHAR_PLUS_2124_3_A/azaharplus-2124.3-A-linux.zip"
 azaharplus_file = "azahar.AppImage"
 cemu_current = "https://github.com/cemu-project/Cemu/releases/download/v2.6/Cemu-2.6-x86_64.AppImage"
-dolphin_current = "https://github.com/pkgforge-dev/Dolphin-emu-AppImage/releases/download/2512%402026-02-22_1771750440/Dolphin_Emulator-2512-anylinux-x86_64.AppImage"
+dolphin_current = "https://github.com/pkgforge-dev/Dolphin-emu-AppImage/releases/download/2603a%402026-03-19_1773943996/Dolphin_Emulator-2603a-anylinux-x86_64.AppImage"
 duckstation_current = "https://github.com/Kyuyrii/Duckstation-GPL3/releases/download/v0.1-7371/DuckStation-x64.AppImage"
 eden_current = "https://git.eden-emu.dev/eden-emu/eden/releases/download/v0.2.0-rc2/Eden-Linux-v0.2.0-rc2-legacy-gcc-standard.AppImage"
 flycast_current = "https://github.com/flyinghead/flycast/releases/download/v2.6/flycast-x86_64.AppImage"
