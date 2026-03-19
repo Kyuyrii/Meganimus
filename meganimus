@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.4.2"
+__version__ = "2.4.3"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -511,8 +511,6 @@ class SettingsDialog(QDialog):
         self.accept()
 
 class AddPortalDialog(QDialog):
-    portal_saved = pyqtSignal()
-
     def __init__(self, parent=None, portal_data=None):
         super().__init__(parent)
         self.portal_data = portal_data
@@ -674,7 +672,14 @@ class AddPortalDialog(QDialog):
         self.update_fps_hud_state()
 
         fps_hud_type = self.portal_data.get('fps_hud_type', '')
-        index_hud = self.fps_hud_combo.findData(fps_hud_type)
+        fps_hud_type_str = str(fps_hud_type)
+
+        index_hud = -1
+        for i in range(self.fps_hud_combo.count()):
+            if str(self.fps_hud_combo.itemData(i)) == fps_hud_type_str:
+                index_hud = i
+                break
+
         if index_hud != -1:
             self.fps_hud_combo.setCurrentIndex(index_hud)
 
@@ -683,8 +688,7 @@ class AddPortalDialog(QDialog):
             self,
             tr("SELECT_GAME"),
             "",
-            "",
-        )
+            "",)
         if file_path:
             self.game_path_input.setText(file_path)
 
@@ -692,8 +696,7 @@ class AddPortalDialog(QDialog):
         folder_path = QFileDialog.getExistingDirectory(
             self,
             tr("SELECT_GAME_FOLDER"),
-            "",
-        )
+            "",)
         if folder_path:
             self.game_path_input.setText(folder_path)
 
@@ -874,7 +877,7 @@ class AddPortalDialog(QDialog):
                     if old_portal_file_path.exists():
                         old_portal_file_path.unlink()
 
-            self.portal_saved.emit()
+            self.parent().load_portals()
             self.accept()
         else:
             QMessageBox.warning(self, tr("CREATE_PORTAL"), tr("MANDATORY_FIELDS_ERROR"))
@@ -924,8 +927,6 @@ class AddPortalDialog(QDialog):
         self.accept()
 
 class MultipleCreatePortalsDialog(QDialog):
-    portals_saved = pyqtSignal()
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("MULTIPLE_PORTAL_CREATOR"))
@@ -1064,8 +1065,7 @@ class MultipleCreatePortalsDialog(QDialog):
                 QMessageBox.warning(
                     self,
                     tr("APP_NAME"),
-                    tr("DUPLICATE_NAME_IN_LIST", name=name)
-                )
+                    tr("DUPLICATE_NAME_IN_LIST", name=name))
                 return
             existing_names.add(safe_portal_name)
 
@@ -1075,8 +1075,7 @@ class MultipleCreatePortalsDialog(QDialog):
                 QMessageBox.warning(
                     self,
                     tr("APP_NAME"),
-                    tr("PORTAL_IN_MULTIPLE_CREATE_ALREADY_EXISTS", name=name)
-                )
+                    tr("PORTAL_IN_MULTIPLE_CREATE_ALREADY_EXISTS", name=name))
                 return
 
             # Test if you can write the file
@@ -1088,8 +1087,7 @@ class MultipleCreatePortalsDialog(QDialog):
                 QMessageBox.critical(
                     self,
                     tr("APP_NAME"),
-                    tr("NAME_INVALID_IN_MULTIPLE", name=name, error=str(e))
-                )
+                    tr("NAME_INVALID_IN_MULTIPLE", name=name, error=str(e)))
                 return
 
         selected_lang = self.language_input.currentText()
@@ -1121,7 +1119,7 @@ class MultipleCreatePortalsDialog(QDialog):
                 QMessageBox.critical(self, tr("APP_NAME"), tr("FAILED_UPDATE_TOML", error=str(e)))
                 return
 
-        self.portals_saved.emit()
+        self.parent().load_portals()
         self.accept()
 
     def save_portal_data(self, data):
@@ -1137,7 +1135,6 @@ class MultipleRemovePortalDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(tr("MULTIPLE_PORTAL_REMOVER"))
         self.resize(340, 500)
-        self.parent_ref = parent
 
         main_layout = QVBoxLayout(self)
 
@@ -1165,8 +1162,8 @@ class MultipleRemovePortalDialog(QDialog):
 
         # Buttons Select All / Deselect All
         btn_layout = QHBoxLayout()
-        self.select_all_btn = QPushButton(tr("SELECT_ALL_IN_MULTIPLE_EDIT"))
-        self.deselect_all_btn = QPushButton(tr("DESELECT_ALL_IN_MULTIPLE_EDIT"))
+        self.select_all_btn = QPushButton(tr("SELECT_ALL"))
+        self.deselect_all_btn = QPushButton(tr("DESELECT_ALL"))
         self.select_all_btn.clicked.connect(self.select_all_portals)
         self.deselect_all_btn.clicked.connect(self.deselect_all_portals)
         btn_layout.addWidget(self.select_all_btn)
@@ -1294,8 +1291,7 @@ class MultipleRemovePortalDialog(QDialog):
                         pass
 
         self.load_portals()
-        if self.parent_ref:
-            self.parent_ref.load_portals()
+        self.parent().load_portals()
 
         self.accept()
 
@@ -1304,7 +1300,6 @@ class MultipleEditPortalDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(tr("MULTIPLE_PORTAL_EDITOR"))
         self.resize(500, 480)
-        self.parent_ref = parent
 
         # Main layout
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
@@ -1337,8 +1332,8 @@ class MultipleEditPortalDialog(QDialog):
 
         # Select all / Deselect all
         btn_layout = QHBoxLayout()
-        self.select_all_btn = QPushButton(tr("SELECT_ALL_IN_MULTIPLE_EDIT"))
-        self.deselect_all_btn = QPushButton(tr("DESELECT_ALL_IN_MULTIPLE_EDIT"))
+        self.select_all_btn = QPushButton(tr("SELECT_ALL"))
+        self.deselect_all_btn = QPushButton(tr("DESELECT_ALL"))
         self.select_all_btn.clicked.connect(self.select_all_portals)
         self.deselect_all_btn.clicked.connect(self.deselect_all_portals)
         btn_layout.addWidget(self.select_all_btn)
@@ -1760,8 +1755,7 @@ class MultipleEditPortalDialog(QDialog):
         self.update_executor_filter()
         self.update_portal_list()
 
-        if self.parent_ref:
-            self.parent_ref.load_portals()
+        self.parent().load_portals()
 
         # Updates the right panel of the PortalInfoViewerDialog.
         if hasattr(self, "portal_info_viewer") and self.portal_info_viewer:
@@ -2103,9 +2097,9 @@ class ShortcutManager(QDialog):
 
         # Select / Deselect All buttons
         select_layout = QHBoxLayout()
-        self.select_all_btn = QPushButton(tr("SELECT_ALL_IN_MULTIPLE_EDIT"))
+        self.select_all_btn = QPushButton(tr("SELECT_ALL"))
         self.select_all_btn.clicked.connect(self.select_all_checkboxes)
-        self.deselect_all_btn = QPushButton(tr("DESELECT_ALL_IN_MULTIPLE_EDIT"))
+        self.deselect_all_btn = QPushButton(tr("DESELECT_ALL"))
         self.deselect_all_btn.clicked.connect(self.deselect_all_checkboxes)
         select_layout.addWidget(self.select_all_btn)
         select_layout.addWidget(self.deselect_all_btn)
@@ -2398,8 +2392,7 @@ class ShortcutManager(QDialog):
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
-                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=desktop_dir)
-            )
+                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=desktop_dir))
             return
 
         # Check if .config directory exists
@@ -2407,8 +2400,7 @@ class ShortcutManager(QDialog):
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
-                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=dot_config_dir)
-            )
+                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=dot_config_dir))
             return
 
         # Check if .local directory exists
@@ -2416,8 +2408,7 @@ class ShortcutManager(QDialog):
             QMessageBox.warning(
                 self,
                 tr("APP_NAME"),
-                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=dot_local_dir)
-            )
+                tr("ERROR_CREATING_SHORTCUTS_LOCATION", path=dot_local_dir))
             return
         
         applications_dir.mkdir(parents=True, exist_ok=True)
@@ -2726,6 +2717,7 @@ class Meganimus(QMainWindow):
             self.portal_list_widget.setIconSize(QSize(icon_width, icon_height))
 
         self.main_layout.addWidget(self.portal_list_widget)
+        self.main_layout.setContentsMargins(0, 6, 6, 6)
 
         # Search bar and combobox
         self.search_widget = QWidget()
@@ -2893,12 +2885,10 @@ class Meganimus(QMainWindow):
 
     def multiple_create_portals(self):
         dialog = MultipleCreatePortalsDialog(self)
-        dialog.portals_saved.connect(self.load_portals)
         dialog.exec()
 
     def multiple_remove_portals(self):
         dialog = MultipleRemovePortalDialog(self)
-        dialog.finished.connect(self.load_portals)
         dialog.exec()
 
     def multiple_edit_portals(self):
@@ -3130,7 +3120,7 @@ class Meganimus(QMainWindow):
                 with open(toml_file, 'r+', encoding='utf-8') as f:
                     data = tomlkit.load(f)
                     modified = False
-                    
+
                     # Handle meganimus-settings.toml executor commands
                     if toml_file.name == "meganimus-settings.toml" and 'executor' in data:
                         executor_data = data['executor']
@@ -3142,7 +3132,7 @@ class Meganimus(QMainWindow):
                                         if old_base != current_base:
                                             executor_data[key] = executor_data[key].replace(old_base, current_base, 1)
                                             modified = True
-                    
+
                     # Handle portal files
                     for field in ['game_path', 'art_path', 'gui_path']:
                         if field in data and isinstance(data[field], str):
@@ -3151,12 +3141,12 @@ class Meganimus(QMainWindow):
                                 if old_base != current_base:
                                     data[field] = data[field].replace(old_base, current_base, 1)
                                     modified = True
-                    
+
                     # Handle WINEPREFIX in env_vars
                     if 'env_vars' in data and isinstance(data['env_vars'], str):
                         if 'WINEPREFIX=' in data['env_vars'] and '/App/Meganimus/' in data['env_vars']:
                             env_vars = data['env_vars']
-                            
+
                             # Find where WINEPREFIX path starts and ends
                             prefix_start = env_vars.find('WINEPREFIX=') + 11
                             prefix_end = env_vars.find(' ', prefix_start)
@@ -3181,7 +3171,6 @@ class Meganimus(QMainWindow):
 
     def add_portal(self):
         dialog = AddPortalDialog(self)
-        dialog.portal_saved.connect(self.load_portals)
         dialog.exec()
 
     def edit_portal(self):
@@ -3197,7 +3186,6 @@ class Meganimus(QMainWindow):
             portal_data = tomlkit.load(f)
 
         dialog = AddPortalDialog(self, portal_data)
-        dialog.portal_saved.connect(self.load_portals)
         dialog.exec()
 
     def start_portal(self, item_or_name):
@@ -4072,8 +4060,8 @@ class Meganimus(QMainWindow):
         progress_dialog.close()
 
     def open_settings(self):
-        dlg = SettingsDialog(self)
-        dlg.exec()
+        dialog = SettingsDialog(self)
+        dialog.exec()
 
     def show_about(self):
         dialog = QDialog(self)
