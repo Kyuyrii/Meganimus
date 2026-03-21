@@ -1,11 +1,13 @@
 #!/bin/bash
 
+sudo apt install python3-venv python3-dev meson libdbus-1-dev libglib2.0-dev -y
+
 # Clean previous builds
 rm -rf AppDir build dist venv Meganimus.spec Meganimus*.AppImage
 
 python3 -m venv venv
 source venv/bin/activate
-pip install pyinstaller PyQt6==6.10.1 tomlkit requests psutil dbus-python
+pip install pyinstaller PyQt6==6.10.1 PyQt6-Qt6==6.10.1 tomlkit requests psutil dbus-python
 
 # I'm using Kvantum from lxqt-support-core24 because it's built without KDE dependencies.
 pyinstaller --onefile --windowed --name Meganimus \
@@ -51,21 +53,6 @@ if [ -z "$APPIMAGE" ]; then
     export APPDIR="${self%/*}"
 fi
 
-# Check and rename folder if exists
-if [ -d "$HOME/AppsFiles/Meganimus" ]; then
-    if [ -d "$HOME/App" ]; then
-        echo "App folder already exists. Moving Meganimus to App..."
-        mv "$HOME/AppsFiles/Meganimus" "$HOME/App/"
-    else
-        echo "Renaming AppsFiles to App..."
-        mv "$HOME/AppsFiles" "$HOME/App"
-    fi
-
-    # Update TOML files
-    MEGANIMUS_CONFIG_PATH="$HOME/App/Meganimus/config"
-    [ -d "$MEGANIMUS_CONFIG_PATH" ] && find "$MEGANIMUS_CONFIG_PATH" -name "*.toml" -exec sed -i 's/AppsFiles/App/g' {} \;
-fi
-
 export PATH="$APPDIR/bin:$PATH"
 export APPIMAGE_EXTRACT_AND_RUN=1
 export QT_QPA_PLATFORMTHEME=xdgdesktopportal
@@ -74,6 +61,7 @@ mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
 mkdir -p "$HOME/.local/share/applications"
 
 # Copy icon if it doesn't exist.
+
 if [ ! -f "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.kyuyrii.meganimus.svg" ]; then
     mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
     cp "$APPDIR/io.github.kyuyrii.meganimus.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/"
@@ -86,8 +74,9 @@ if [ -f "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop" ];
     sed -i "s|Name=.*|Name=Meganimus [AppImage]|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
 else
     # If it doesn't exist, copy and update.
-    sed "s|Exec=.*|Exec=$APPIMAGE|" "$APPDIR/io.github.kyuyrii.meganimus.desktop" > "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
-    sed "s|Name=.*|Name=Meganimus [AppImage]|" "$APPDIR/io.github.kyuyrii.meganimus.desktop" > "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
+    cp "$APPDIR/io.github.kyuyrii.meganimus.desktop" "$HOME/.local/share/applications/"
+    sed -i "s|Exec=.*|Exec=$APPIMAGE|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
+    sed -i "s|Name=.*|Name=Meganimus [AppImage]|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
     chmod +x "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
 fi
 

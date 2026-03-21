@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.4.3"
+__version__ = "2.5"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -66,10 +66,10 @@ meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
 meganimus_executor_dir = meganimus_dir / "executor"
 meganimus_wineprefix_dir = meganimus_dir / "wineprefix"
 
-# Loads translations from external TOML files.
-def load_external_translations():
-    external_translations = {}
-    supported_languages = {}
+# Loads translations from TOML files.
+def load_translations():
+    toml_translations = {}
+    toml_languages = {}
 
     # Translation folders
     translation_dirs = [
@@ -87,26 +87,26 @@ def load_external_translations():
                         lang_data = tomlkit.load(f)
 
                     # Add to translations
-                    external_translations[lang_code] = lang_data
+                    toml_translations[lang_code] = lang_data
 
                     # Adds to supported languages
                     lang_name = lang_data.get("language_name", lang_code)
-                    supported_languages[lang_name] = lang_code
+                    toml_languages[lang_name] = lang_code
 
                     print(f"Loaded translation: {lang_name} ({lang_code})")
 
                 except Exception as e:
                     print(f"Error loading translation {toml_file}: {e}")
 
-    return external_translations, supported_languages
+    return toml_translations, toml_languages
 
-# Load external translations
-EXTERNAL_TRANSLATIONS, SUPPORTED_LANGUAGES = load_external_translations()
+# Load translations
+available_translations, available_languages = load_translations()
 
 def tr(key, **kwargs):
     # Get the translated string from external translations
-    if LANG in EXTERNAL_TRANSLATIONS:
-        translation_dict = EXTERNAL_TRANSLATIONS[LANG]
+    if LANG in available_translations:
+        translation_dict = available_translations[LANG]
         translated_string = translation_dict.get(key)
         
         if translated_string:
@@ -172,7 +172,7 @@ PORTAL_LOCALE_OPTIONS = [
     'עברית (he_IL.UTF-8)',
 ]
 
-def detect_default_settings() -> dict:
+def create_default_settings() -> dict:
     """Provides default settings for first-time creation."""
     return {
         "design": {
@@ -180,8 +180,7 @@ def detect_default_settings() -> dict:
             "language": LANG if LANG else "en_US",
             "layout_mode": "classic",
             "icon_width_classic": 420,
-            "icon_width_grid": 282,
-            "toolbar_icon_size": 32,
+            "icon_width_grid": 246,
             "search_bar_visible": False,
             "executor_filter_index": 0,
             "toolbar_visible": True,
@@ -239,7 +238,7 @@ def detect_default_settings() -> dict:
 
 def load_settings() -> dict:
     """Loads settings, uses indefinite if saved style is unavailable."""
-    defaults = detect_default_settings()
+    defaults = create_default_settings()
 
     try:
         with open(meganimus_settings_file, "r", encoding="utf-8") as f:
@@ -287,11 +286,10 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("MEGANIMUS_SETTINGS"))
-        self.setMinimumSize(400, 340)
+        self.setMinimumSize(400, 260)
 
         self.settings = load_settings()
-        layout = QVBoxLayout(self)
-        top_layout = QFormLayout()
+        layout = QGridLayout(self)
 
         # Qt Style
         style_label = QLabel(tr("QT_STYLE"))
@@ -303,19 +301,21 @@ class SettingsDialog(QDialog):
             self.style_combo.setCurrentText(tr("INDEFINITE"))
         else:
             self.style_combo.setCurrentText(saved_style)
-        top_layout.addRow(style_label, self.style_combo)
+        layout.addWidget(style_label, 0, 0)
+        layout.addWidget(self.style_combo, 0, 1)
 
         # Language
         lang_label = QLabel(tr("LANGUAGE"))
         self.lang_combo = QComboBox()
-        self.lang_combo.addItems(SUPPORTED_LANGUAGES.keys())
+        self.lang_combo.addItems(available_languages.keys())
         saved_lang = self.settings["design"].get("language", LANG)
-        lang_codes = list(SUPPORTED_LANGUAGES.values())
+        lang_codes = list(available_languages.values())
         if saved_lang in lang_codes:
             self.lang_combo.setCurrentIndex(lang_codes.index(saved_lang))
         else:
             self.lang_combo.setCurrentIndex(0)
-        top_layout.addRow(lang_label, self.lang_combo)
+        layout.addWidget(lang_label, 1, 0)
+        layout.addWidget(self.lang_combo, 1, 1)
 
         # View mode
         layout_mode_label = QLabel(tr("LAYOUT_MODE"))
@@ -328,40 +328,36 @@ class SettingsDialog(QDialog):
         saved_layout_mode = self.settings["design"].get("layout_mode", "classic")
         index_map = {"classic": 0, "grid": 1, "list": 2}
         self.layout_mode_combo.setCurrentIndex(index_map.get(saved_layout_mode, 0))
-        top_layout.addRow(layout_mode_label, self.layout_mode_combo)
+        layout.addWidget(layout_mode_label, 2, 0)
+        layout.addWidget(self.layout_mode_combo, 2, 1)
 
         # Icon width classic
         classic_label = QLabel(tr("ICON_WIDTH_CLASSIC"))
         self.classic_width_input = QSpinBox()
         self.classic_width_input.setRange(50, 2000)
         self.classic_width_input.setValue(self.settings["design"].get("icon_width_classic", 420))
-        top_layout.addRow(classic_label, self.classic_width_input)
+        layout.addWidget(classic_label, 3, 0)
+        layout.addWidget(self.classic_width_input, 3, 1)
 
         # Icon width grid
         grid_label = QLabel(tr("ICON_WIDTH_GRID"))
         self.grid_width_input = QSpinBox()
         self.grid_width_input.setRange(50, 2000)
         self.grid_width_input.setValue(self.settings["design"].get("icon_width_grid", 300))
-        top_layout.addRow(grid_label, self.grid_width_input)
-
-        # Toolbar icon size
-        toolbar_icon_size_label = QLabel(tr("ICON_TOOLBAR_SIZE"))
-        self.toolbar_icon_size_input = QSpinBox()
-        self.toolbar_icon_size_input.setRange(16, 128)
-        self.toolbar_icon_size_input.setValue(self.settings["design"].get("toolbar_icon_size", 32))
-        top_layout.addRow(toolbar_icon_size_label, self.toolbar_icon_size_input)
+        layout.addWidget(grid_label, 4, 0)
+        layout.addWidget(self.grid_width_input, 4, 1)
 
         # SGDB API Key
         self.api_input = QLineEdit()
         self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_input.setText(self.settings["other"].get("sgdb_apikey", ""))
-        top_layout.addRow(tr("SGDB_API_KEY_LABEL"), self.api_input)
-
-        layout.addLayout(top_layout)
+        api_label = QLabel(tr("SGDB_API_KEY_LABEL"))
+        layout.addWidget(api_label, 5, 0)
+        layout.addWidget(self.api_input, 5, 1)
 
         # Creates the QTabWidget for the executors
         tabs = QTabWidget()
-        layout.addWidget(tabs)
+        layout.addWidget(tabs, 6, 0, 1, 2)
 
         # Configuring executors
         self.executors_config = {
@@ -459,7 +455,7 @@ class SettingsDialog(QDialog):
         # Save Button
         save_btn = QPushButton(tr("SAVE_BUTTON"))
         save_btn.clicked.connect(self.save_and_close)
-        layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(save_btn, 7, 1, alignment=Qt.AlignmentFlag.AlignRight)
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
@@ -489,14 +485,13 @@ class SettingsDialog(QDialog):
         else:
             self.settings["design"]["qt_style"] = selected_style
         selected_index = self.lang_combo.currentIndex()
-        self.settings["design"]["language"] = list(SUPPORTED_LANGUAGES.values())[selected_index]
+        self.settings["design"]["language"] = list(available_languages.values())[selected_index]
         self.settings["design"]["layout_mode"] = ["classic", "grid", "list"][self.layout_mode_combo.currentIndex()]
         self.settings["other"]["sgdb_apikey"] = self.api_input.text().strip()
 
         # Save the icon widths
         self.settings["design"]["icon_width_classic"] = self.classic_width_input.value()
         self.settings["design"]["icon_width_grid"] = self.grid_width_input.value()
-        self.settings["design"]["toolbar_icon_size"] = self.toolbar_icon_size_input.value()
 
         # Save all executors
         for executor_name, widgets in self.executor_widgets.items():
@@ -2593,7 +2588,7 @@ class Meganimus(QMainWindow):
         self.toolbar.setMovable(False)
         self.toolbar.setFloatable(False)
         self.toolbar.setVisible(settings["design"].get("toolbar_visible", True))
-        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolbar)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolbar)
 
         # MenuBar
         self.menu_bar = self.menuBar()
@@ -2601,25 +2596,9 @@ class Meganimus(QMainWindow):
         # Menu PORTAL
         self.portal_menu = self.menu_bar.addMenu(tr("PORTAL"))
 
-        # Add multiple portals
-        self.multiple_create_portals_action = QAction(tr("CREATE_MULTIPLE_PORTALS"), self)
-        self.multiple_create_portals_action.triggered.connect(self.multiple_create_portals)
-        self.portal_menu.addAction(self.multiple_create_portals_action)
-
-        # Remove multiple portals
-        self.multiple_remove_portals_action = QAction(tr("REMOVE_MULTIPLE_PORTALS"), self)
-        self.multiple_remove_portals_action.triggered.connect(self.multiple_remove_portals)
-        self.portal_menu.addAction(self.multiple_remove_portals_action)
-
-        # Edit multiple portals
-        self.multiple_edit_portals_action = QAction(tr("EDIT_MULTIPLE_PORTALS"), self)
-        self.multiple_edit_portals_action.triggered.connect(self.multiple_edit_portals)
-        self.portal_menu.addAction(self.multiple_edit_portals_action)
-
-        # Shortcut manager
-        self.shortcut_manager_action = QAction(tr("MANAGE_SHORTCUTS"), self)
-        self.shortcut_manager_action.triggered.connect(self.open_shortcut_manager_dialog)
-        self.portal_menu.addAction(self.shortcut_manager_action)
+        self.open_game_path_action = QAction(tr("OPEN_GAME_PATH"), self)
+        self.open_game_path_action.triggered.connect(partial(self.open_path, "game"))
+        self.portal_menu.addAction(self.open_game_path_action)
 
         # Menu TRANSFER
         self.transfer_menu = self.menu_bar.addMenu(tr("TRANSFER"))
@@ -2632,6 +2611,29 @@ class Meganimus(QMainWindow):
         self.transfer_arts_action.triggered.connect(self.open_transfer_arts)
         self.transfer_menu.addAction(self.transfer_arts_action)
 
+        # Menu MANIPULATE
+        self.manipulate_menu = self.menu_bar.addMenu(tr("MANIPULATE"))
+
+        # Add multiple portals
+        self.multiple_create_portals_action = QAction(tr("CREATE_MULTIPLE_PORTALS"), self)
+        self.multiple_create_portals_action.triggered.connect(self.multiple_create_portals)
+        self.manipulate_menu.addAction(self.multiple_create_portals_action)
+
+        # Remove multiple portals
+        self.multiple_remove_portals_action = QAction(tr("REMOVE_MULTIPLE_PORTALS"), self)
+        self.multiple_remove_portals_action.triggered.connect(self.multiple_remove_portals)
+        self.manipulate_menu.addAction(self.multiple_remove_portals_action)
+
+        # Edit multiple portals
+        self.multiple_edit_portals_action = QAction(tr("EDIT_MULTIPLE_PORTALS"), self)
+        self.multiple_edit_portals_action.triggered.connect(self.multiple_edit_portals)
+        self.manipulate_menu.addAction(self.multiple_edit_portals_action)
+
+        # Shortcut manager
+        self.shortcut_manager_action = QAction(tr("CREATE_SHORTCUTS"), self)
+        self.shortcut_manager_action.triggered.connect(self.open_shortcut_manager_dialog)
+        self.manipulate_menu.addAction(self.shortcut_manager_action)
+
         # Menu EXTRA
         self.extra_menu = self.menu_bar.addMenu(tr("EXTRA"))
 
@@ -2643,9 +2645,8 @@ class Meganimus(QMainWindow):
         self.about_action.triggered.connect(self.show_about)
         self.extra_menu.addAction(self.about_action)
 
-        # Increase the size of icons
-        toolbar_icon_size = settings["design"].get("toolbar_icon_size", 32)
-        self.toolbar.setIconSize(QSize(toolbar_icon_size, toolbar_icon_size))
+        # Size of icons
+        self.toolbar.setIconSize(QSize(32, 32))
 
         self.run_action = QAction(QIcon.fromTheme("media-playback-start"), tr("START_PORTAL"), self)
         self.run_action.triggered.connect(self.start_selected_portal)
@@ -2717,7 +2718,6 @@ class Meganimus(QMainWindow):
             self.portal_list_widget.setIconSize(QSize(icon_width, icon_height))
 
         self.main_layout.addWidget(self.portal_list_widget)
-        self.main_layout.setContentsMargins(0, 6, 6, 6)
 
         # Search bar and combobox
         self.search_widget = QWidget()
@@ -2743,8 +2743,7 @@ class Meganimus(QMainWindow):
 
         # Visibility based on Meganimus settings
         visible = settings["design"].get("search_bar_visible", False)
-        self.search_bar.setVisible(visible)
-        self.executor_filter.setVisible(visible)
+        self.search_widget.setVisible(visible)
         self.executor_filter.setCurrentIndex(settings["design"].get("executor_filter_index", 0))
 
         # ===== Context menu =====
@@ -2821,9 +2820,9 @@ class Meganimus(QMainWindow):
             self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
 
     def toggle_search_bar(self):
-        visible = not self.search_bar.isVisible()
-        self.search_bar.setVisible(visible)
-        self.executor_filter.setVisible(visible)
+        visible = not self.search_widget.isVisible()
+        self.search_widget.setVisible(visible)
+        
         if visible:
             self.search_bar.setFocus()
             self.search_bar.selectAll()
@@ -3244,8 +3243,7 @@ class Meganimus(QMainWindow):
                     # Create loop device
                     result = subprocess.run(
                         ["udisksctl", "loop-setup", "-f", str(iso_path)],
-                        capture_output=True, text=True
-                    )
+                        capture_output=True, text=True)
                     if result.returncode != 0:
                         QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_CREATION_FAILED", error=result.stderr))
                         return
@@ -3259,8 +3257,7 @@ class Meganimus(QMainWindow):
                     # Mount loop device
                     result_mount = subprocess.run(
                         ["udisksctl", "mount", "-b", loop_device],
-                        capture_output=True, text=True
-                    )
+                        capture_output=True, text=True)
                     if result_mount.returncode != 0:
                         QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_FAILED", error=result_mount.stderr))
                         return
@@ -3315,8 +3312,7 @@ class Meganimus(QMainWindow):
                     # Create loop device
                     result = subprocess.run(
                         ["udisksctl", "loop-setup", "-f", str(iso_path)],
-                        capture_output=True, text=True
-                    )
+                        capture_output=True, text=True)
                     if result.returncode != 0:
                         QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_CREATION_FAILED", error=result.stderr))
                         return
@@ -3330,8 +3326,7 @@ class Meganimus(QMainWindow):
                     # Mount loop device
                     result_mount = subprocess.run(
                         ["udisksctl", "mount", "-b", loop_device],
-                        capture_output=True, text=True
-                    )
+                        capture_output=True, text=True)
                     if result_mount.returncode != 0:
                         QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_FAILED", error=result_mount.stderr))
                         return
@@ -3485,7 +3480,6 @@ class Meganimus(QMainWindow):
             QMessageBox.critical(self, tr("APP_NAME"), tr("PORTAL_START_ERROR", error=str(e)))
 
     def start_executor(self, executor_name, executor_command_str=None):
-        settings = load_settings()
         if self.windowTitle().startswith(tr("PORTAL_STARTED", portal_name="").split("{portal_name}")[0].strip()):
             reply = QMessageBox.question(
                 self,
@@ -3497,9 +3491,6 @@ class Meganimus(QMainWindow):
                 self.stop_execution()
             else:
                 return
-
-        if executor_command_str is None:
-            executor_command_str = settings["executor"].get(f"{executor_name.lower()}_command", "").strip()
 
         print(tr("STARTING_PORTAL", name=executor_name))
 
@@ -3574,10 +3565,7 @@ class Meganimus(QMainWindow):
         font.setBold(True)
         item.setFont(font)
 
-        # Decide which image to use
-        art_path_to_use = None
         layout_mode = settings.get("layout_mode", "classic")
-
         art_path_to_use = portal_data.get("art_path")
 
         # Art as an icon
@@ -3653,12 +3641,12 @@ class Meganimus(QMainWindow):
             else:
                 earth_version = {}
 
-            # Determine what needs to be downloaded
-            executors_to_download = []
+            # Determine what needs to be transfered
+            executors_to_transfer = []
 
             # Add missing executors
             for executor in missing_executors:
-                executors_to_download.append(executor)
+                executors_to_transfer.append(executor)
 
             # Check for updates
             for executor in executors:
@@ -3668,21 +3656,23 @@ class Meganimus(QMainWindow):
                 if sky_key not in x86_64_version:
                     continue
 
-                if executor in executors_to_download:
+                if executor in executors_to_transfer:
                     continue
 
                 sky_link = x86_64_version[sky_key]
                 earth_link = earth_version.get(earth_key)
 
                 if earth_link != sky_link:
-                    executors_to_download.append(executor)
+                    executors_to_transfer.append(executor)
 
-            if not executors_to_download:
+            if not executors_to_transfer:
                 QMessageBox.information(self, tr("APP_NAME"), tr("EXECUTOR_NO_UPDATES"))
                 return
 
+            total_executors = len(executors_to_transfer)
+
             # Create progress dialog
-            progress_dialog = QProgressDialog(tr("EXECUTOR_TRANSFER_IN_PROGRESS"), tr("CANCEL_BUTTON"), 0, len(executors_to_download), self)
+            progress_dialog = QProgressDialog(tr("EXECUTOR_TRANSFER_IN_PROGRESS"), tr("CANCEL_BUTTON"), 0, 100, self)
             progress_dialog.setWindowTitle(tr("APP_NAME"))
             progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
             progress_dialog.setAutoClose(True)
@@ -3694,18 +3684,16 @@ class Meganimus(QMainWindow):
             progress_dialog.canceled.connect(lambda: setattr(self, '_cancel_executor', True))
 
             # Progress setup
-            progress_dialog.setMaximum(len(executors_to_download))
             progress_dialog.setValue(0)
             QApplication.processEvents()
 
             # Temp directory
-            executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_downloads"
+            executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_transfers"
             executors_tmp_dir.mkdir(parents=True, exist_ok=True)
             
             completed = 0
-            downloads = []
 
-            for executor in executors_to_download:
+            for executor in executors_to_transfer:
                 if self._cancel_executor or progress_dialog.wasCanceled():
                     break
 
@@ -3714,32 +3702,47 @@ class Meganimus(QMainWindow):
 
                 executor_lower = executor.lower()
 
-                download_url = x86_64_version.get(f"{executor_lower}_current")
+                transfer_url = x86_64_version.get(f"{executor_lower}_current")
                 file_key = f"{executor_lower}_file"
                 target_filename = x86_64_version.get(file_key, f"{executor}.AppImage")
 
-                if not download_url:
+                if not transfer_url:
                     completed += 1
-                    progress_dialog.setValue(completed)
+                    progress_dialog.setValue(int(completed / total_executors * 100))
                     QApplication.processEvents()
                     continue
 
                 executor_temp_file_path = None
 
                 try:
-                    downloader = ExecutorDownloader(download_url, executor, target_filename)
+                    transferer = ExecutorTransferer(transfer_url, executor, target_filename)
 
                     loop = QEventLoop()
-                    download_result = {"success": False, "file_path": None}
+                    transfer_result = {"success": False, "file_path": None}
+                    transfer_completed = False
+
+                    def on_progress(percent):
+                        if self._cancel_executor or progress_dialog.wasCanceled():
+                            transferer.cancel()
+                            loop.quit()
+                            return
+                        overall_progress = (completed + percent / 100) / total_executors * 100
+                        overall_progress = min(100, overall_progress)
+                        progress_dialog.setValue(int(overall_progress))
+                        QApplication.processEvents()
 
                     def on_finished(success, file_path):
-                        download_result["success"] = success
-                        download_result["file_path"] = file_path
-                        loop.quit()
+                        nonlocal transfer_completed
+                        if not transfer_completed:
+                            transfer_completed = True
+                            transfer_result["success"] = success
+                            transfer_result["file_path"] = file_path
+                            loop.quit()
 
-                    downloader.finished.connect(on_finished)
-                    downloader.error.connect(lambda msg: print(msg))
-                    downloader.start()
+                    transferer.progress.connect(on_progress)
+                    transferer.finished.connect(on_finished)
+                    transferer.error.connect(lambda msg: print(msg))
+                    transferer.start()
 
                     timer = QTimer()
                     timer.timeout.connect(lambda: QApplication.processEvents())
@@ -3748,52 +3751,45 @@ class Meganimus(QMainWindow):
                     loop.exec()
                     timer.stop()
 
-                    if download_result["success"] and download_result["file_path"]:
-                        executor_temp_file_path = download_result["file_path"]
+                    if self._cancel_executor or progress_dialog.wasCanceled():
+                        if transfer_result["file_path"] and Path(transfer_result["file_path"]).exists():
+                            Path(transfer_result["file_path"]).unlink(missing_ok=True)
+                        break
+
+                    if transfer_result["success"] and transfer_result["file_path"]:
+                        executor_temp_file_path = transfer_result["file_path"]
 
                 except Exception as e:
                     print(tr("EXECUTOR_TRANSFER_ERROR", name=executor, error=str(e)))
 
                 if executor_temp_file_path and Path(executor_temp_file_path).exists():
-                    downloads.append((executor, executor_temp_file_path))
-
-                completed += 1
-                progress_dialog.setValue(completed)
-                QApplication.processEvents()
-
-            # Copy files
-            if not self._cancel_executor and not progress_dialog.wasCanceled():
-                for executor, executor_temp_file_path in downloads:
                     try:
                         final_path = meganimus_executor_dir / f"{executor}.AppImage"
                         shutil.copy2(executor_temp_file_path, final_path)
                         Path(executor_temp_file_path).unlink(missing_ok=True)
+                        
+                        new_earth = {"x86_64": {}}
+                        for key, value in x86_64_version.items():
+                            if key.endswith("_current"):
+                                executor_name = key.replace("_current", "")
+                                new_earth["x86_64"][f"{executor_name}_local"] = value
+                        
+                        with open(earth_file, "w", encoding="utf-8") as f:
+                            tomlkit.dump(new_earth, f)
+                                
                     except Exception as e:
                         print(tr("EXECUTOR_COPY_ERROR", name=executor, error=str(e)))
 
+                completed += 1
+                progress_dialog.setValue(int(completed / total_executors * 100))
+                QApplication.processEvents()
+
             # Make executable
             os.system(f'chmod +x "{meganimus_executor_dir}/"*.AppImage 2>/dev/null')
-
-            # Update earth file
-            if downloads and not self._cancel_executor and not progress_dialog.wasCanceled():
-                new_earth = {"x86_64": {}}
-
-                for key, value in x86_64_version.items():
-                    if key.endswith("_current"):
-                        executor_name = key.replace("_current", "")
-                        new_earth["x86_64"][f"{executor_name}_local"] = value
-
-                try:
-                    with open(earth_file, "w", encoding="utf-8") as f:
-                        tomlkit.dump(new_earth, f)
-                except Exception as e:
-                    print(tr("EXECUTOR_EARTH_SAVE_ERROR", error=str(e)))
-
-            downloads.clear()
             
             if not self._cancel_executor and not progress_dialog.wasCanceled():
                 QMessageBox.information(self, tr("APP_NAME"), tr("EXECUTOR_TRANSFER_FINISHED"))
-    
+        
             progress_dialog.close()
 
         except Exception as e:
@@ -4059,6 +4055,31 @@ class Meganimus(QMainWindow):
         self.load_portals()
         progress_dialog.close()
 
+    def open_path(self, chosen_path):
+        portal_name = self.get_selected_portal()
+        if not portal_name:
+            QMessageBox.information(self, tr("APP_NAME"), tr("NO_PORTALS_FOUND"))
+            return
+
+        safe_portal_name = portal_name.replace(" ", "_").lower()
+        base_file = meganimus_config_dir / f"portal-info-{safe_portal_name}.toml"
+
+        with base_file.open("r", encoding="utf-8") as f:
+            portal_info = tomlkit.load(f)
+
+        path = None
+        if chosen_path == "game":
+            game_path = portal_info.get("game_path", "")
+            path = Path(game_path).parent if game_path else None
+
+        if path and path.exists():
+            subprocess.run(["xdg-open", str(path)])
+        else:
+            QMessageBox.critical(
+                self,
+                tr("APP_NAME"),
+                tr("OPEN_PATH_ERROR", path=str(path) if path else ""))
+
     def open_settings(self):
         dialog = SettingsDialog(self)
         dialog.exec()
@@ -4194,71 +4215,100 @@ class ArtworkLoader(QThread):
         except Exception as e:
             self.error.emit(tr("ARTS_LOAD_ERROR", error=str(e)))
 
-class ExecutorDownloader(QThread):
+class ExecutorTransferer(QThread):
     finished = pyqtSignal(bool, str)  # success, file_path
     error = pyqtSignal(str)
+    progress = pyqtSignal(int)  # Transfer progress percentage
 
     def __init__(self, url, executor_name, target_filename):
         super().__init__()
         self.url = url
         self.executor_name = executor_name
         self.target_filename = target_filename
+        self._is_cancelled = False
 
-    def download_file(self, url):
-        """Download file and return path"""
-        executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_downloads"
+    def cancel(self):
+        """Cancel the ongoing transfer"""
+        self._is_cancelled = True
+
+    def transfer_file(self, url):
+        """Transfer file and return path"""
+        executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_transfers"
         executors_tmp_dir.mkdir(parents=True, exist_ok=True)
         executor_temp_file = executors_tmp_dir / f"{self.executor_name}_{uuid.uuid4().hex}"
-        
+
         response = requests.get(url, stream=True, timeout=60)
         response.raise_for_status()
-        
+
+        total_size = int(response.headers.get('content-length', 0))
+        transferred = 0
+
         with open(executor_temp_file, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
+                if self._is_cancelled:
+                    return None
                 if chunk:
                     f.write(chunk)
-        
+                    transferred += len(chunk)
+                    if total_size > 0:
+                        percent = int(transferred * 100 / total_size)
+                        self.progress.emit(percent)
+
         return executor_temp_file
 
     def extract_and_find(self, archive_path):
-        executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_downloads"
+        executors_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "executor_transfers"
         extracted_dir = executors_tmp_dir / f"extract_{uuid.uuid4().hex}"
         extracted_dir.mkdir(exist_ok=True)
-        
+
         file_ext = Path(self.url).suffix.lower()
-        
+
         if file_ext == '.zip' or '.zip' in self.url:
             with zipfile.ZipFile(archive_path, 'r') as zip_ref:
                 zip_ref.extractall(extracted_dir)
         else:
             with tarfile.open(archive_path, 'r:*') as tar_ref:
                 tar_ref.extractall(extracted_dir)
-        
+
         # Find the target AppImage
         found_file = None
         for root, dirs, files in os.walk(extracted_dir):
             for file in files:
-                if file == self.target_filename or file.endswith('.AppImage'):
+                if file == self.target_filename:
                     found_file = Path(root) / file
                     break
             if found_file:
                 break
-        
+
+        # If target not found, fallback to any .AppImage
+        if not found_file:
+            for root, dirs, files in os.walk(extracted_dir):
+                for file in files:
+                    if file.endswith('.AppImage'):
+                        found_file = Path(root) / file
+                        break
+                if found_file:
+                    break
+
         if found_file:
             # Copy to a new temp file
             result_file = executors_tmp_dir / f"{self.executor_name}_{uuid.uuid4().hex}.AppImage"
             shutil.copy2(found_file, result_file)
-        
+
         # Cleanup
         shutil.rmtree(extracted_dir, ignore_errors=True)
-        
+
         return result_file if found_file else None
 
     def run(self):
         try:
-            # Download file
-            executor_temp_file = self.download_file(self.url)
+            # Transfer file
+            executor_temp_file = self.transfer_file(self.url)
             
+            if executor_temp_file is None:
+                self.finished.emit(False, "")
+                return
+
             # Check if file is archive
             file_ext = Path(self.url).suffix.lower()
             if file_ext in ['.zip', '.tar.gz', '.tar.xz', '.tar.bz2'] or '.zip' in self.url or '.tar.' in self.url:
