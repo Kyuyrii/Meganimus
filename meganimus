@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "2.5"
+__version__ = "3.0"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -64,7 +64,6 @@ meganimus_gui_dir = meganimus_dir / "art" / "gui"
 meganimus_config_dir = meganimus_dir / "config"
 meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
 meganimus_executor_dir = meganimus_dir / "executor"
-meganimus_wineprefix_dir = meganimus_dir / "wineprefix"
 
 # Loads translations from TOML files.
 def load_translations():
@@ -179,8 +178,8 @@ def create_default_settings() -> dict:
             "qt_style": "indefinite",
             "language": LANG if LANG else "en_US",
             "layout_mode": "classic",
-            "icon_width_classic": 420,
-            "icon_width_grid": 246,
+            "art_width_classic": 420,
+            "art_width_grid": 246,
             "search_bar_visible": False,
             "executor_filter_index": 0,
             "toolbar_visible": True,
@@ -199,37 +198,20 @@ def create_default_settings() -> dict:
         },
         "executor": {
             "azaharplus_command": "/home/*/App/Meganimus/executor/AzaharPlus.AppImage",
-            "azaharplus_executor_args": "-f",
             "cemu_command": "/home/*/App/Meganimus/executor/Cemu.AppImage",
-            "cemu_executor_args": "-f -g",
             "dolphin_command": "/home/*/App/Meganimus/executor/Dolphin.AppImage",
-            "dolphin_executor_args": "--batch -e",
             "duckstation_command": "/home/*/App/Meganimus/executor/Duckstation.AppImage",
-            "duckstation_executor_args": "-fullscreen",
             "eden_command": "/home/*/App/Meganimus/executor/Eden.AppImage",
-            "eden_executor_args": "-f -g",
             "flycast_command": "/home/*/App/Meganimus/executor/Flycast.AppImage",
-            "flycast_executor_args": "",
             "melonds_command": "/home/*/App/Meganimus/executor/MelonDS.AppImage",
-            "melonds_executor_args": "-f",
             "mgba_command": "/home/*/App/Meganimus/executor/mGBA.AppImage",
-            "mgba_executor_args": "-f",
             "pcsx2_command": "/home/*/App/Meganimus/executor/PCSX2.AppImage",
-            "pcsx2_executor_args": "-fullscreen",
             "ppsspp_command": "/home/*/App/Meganimus/executor/PPSSPP.AppImage",
-            "ppsspp_executor_args": "--fullscreen --pause-menu-exit",
             "rmg_command": "/home/*/App/Meganimus/executor/RMG.AppImage",
-            "rmg_executor_args": "--fullscreen",
             "rpcs3_command": "/home/*/App/Meganimus/executor/RPCS3.AppImage",
-            "rpcs3_executor_args": "--no-gui --fullscreen",
             "ryubing_command": "/home/*/App/Meganimus/executor/Ryubing.AppImage",
-            "ryubing_executor_args": "-f",
             "snes9x_command": "/home/*/App/Meganimus/executor/Snes9x.AppImage",
-            "snes9x_executor_args": "",
-            "wine_command": "/home/*/App/Meganimus/executor/Wine.AppImage",
-            "wine_executor_args": "",
             "xemu_command": "/home/*/App/Meganimus/executor/xemu.AppImage",
-            "xemu_executor_args": "-full-screen -dvd_path",
         },
         "other": {
             "sgdb_apikey": "",
@@ -332,24 +314,25 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.layout_mode_combo, 2, 1)
 
         # Icon width classic
-        classic_label = QLabel(tr("ICON_WIDTH_CLASSIC"))
+        classic_label = QLabel(tr("ART_WIDTH_CLASSIC"))
         self.classic_width_input = QSpinBox()
         self.classic_width_input.setRange(50, 2000)
-        self.classic_width_input.setValue(self.settings["design"].get("icon_width_classic", 420))
+        self.classic_width_input.setValue(self.settings["design"].get("art_width_classic", 420))
+        self.classic_width_input.valueChanged.connect(self.save_art_width_classic)
         layout.addWidget(classic_label, 3, 0)
         layout.addWidget(self.classic_width_input, 3, 1)
 
         # Icon width grid
-        grid_label = QLabel(tr("ICON_WIDTH_GRID"))
+        grid_label = QLabel(tr("ART_WIDTH_GRID"))
         self.grid_width_input = QSpinBox()
         self.grid_width_input.setRange(50, 2000)
-        self.grid_width_input.setValue(self.settings["design"].get("icon_width_grid", 300))
+        self.grid_width_input.setValue(self.settings["design"].get("art_width_grid", 300))
+        self.grid_width_input.valueChanged.connect(self.save_art_width_grid)
         layout.addWidget(grid_label, 4, 0)
         layout.addWidget(self.grid_width_input, 4, 1)
 
         # SGDB API Key
         self.api_input = QLineEdit()
-        self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_input.setText(self.settings["other"].get("sgdb_apikey", ""))
         api_label = QLabel(tr("SGDB_API_KEY_LABEL"))
         layout.addWidget(api_label, 5, 0)
@@ -359,62 +342,12 @@ class SettingsDialog(QDialog):
         tabs = QTabWidget()
         layout.addWidget(tabs, 6, 0, 1, 2)
 
-        # Configuring executors
-        self.executors_config = {
-            "AzaharPlus": {
-                "executor_args": "-f",
-            },
-            "Cemu": {
-                "executor_args": "-f -g",
-            },
-            "Dolphin": {
-                "executor_args": "--batch -e",
-            },
-            "Duckstation": {
-                "executor_args": "-fullscreen",
-            },
-            "Eden": {
-                "executor_args": "-f -g",
-            },
-            "Flycast": {
-                "executor_args": "",
-            },
-            "MelonDS": {
-                "executor_args": "-f",
-            },
-            "mGBA": {
-                "executor_args": "-f",
-            },
-            "PCSX2": {
-                "executor_args": "-fullscreen",
-            },
-            "PPSSPP": {
-                "executor_args": "--fullscreen --pause-menu-exit",
-            },
-            "RMG": {
-                "executor_args": "--fullscreen",
-            },
-            "RPCS3": {
-                "executor_args": "--no-gui --fullscreen",
-            },
-            "Ryubing": {
-                "executor_args": "-f",
-            },
-            "Snes9x": {
-                "executor_args": "",
-            },
-            "Wine": {
-                "executor_args": "",
-            },
-            "xemu": {
-                "executor_args": "-full-screen -dvd_path",
-            },
-        }
-
         # Store widgets for each executor
         self.executor_widgets = {}
 
-        for executor_name, config in self.executors_config.items():
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
+
+        for executor_name in executors:
             # Executor tab
             tab = QWidget()
             tab_layout = QVBoxLayout(tab)
@@ -463,6 +396,16 @@ class SettingsDialog(QDialog):
             return
         super().keyPressEvent(event)
 
+    def save_art_width_classic(self):
+        self.settings["design"]["art_width_classic"] = self.classic_width_input.value()
+        save_settings(self.settings)
+        self.parent().update_art_size()
+
+    def save_art_width_grid(self):
+        self.settings["design"]["art_width_grid"] = self.grid_width_input.value()
+        save_settings(self.settings)
+        self.parent().update_art_size()
+
     def browse_executor(self, executor_name):
         widgets = self.executor_widgets[executor_name]
         path, _ = QFileDialog.getOpenFileName(self, tr("SELECT_FILE"))
@@ -489,20 +432,11 @@ class SettingsDialog(QDialog):
         self.settings["design"]["layout_mode"] = ["classic", "grid", "list"][self.layout_mode_combo.currentIndex()]
         self.settings["other"]["sgdb_apikey"] = self.api_input.text().strip()
 
-        # Save the icon widths
-        self.settings["design"]["icon_width_classic"] = self.classic_width_input.value()
-        self.settings["design"]["icon_width_grid"] = self.grid_width_input.value()
-
         # Save all executors
         for executor_name, widgets in self.executor_widgets.items():
             self.settings["executor"][f"{executor_name.lower()}_command"] = widgets["path_input"].text()
-            self.settings["executor"][f"{executor_name.lower()}_executor_args"] = self.executors_config[executor_name]["executor_args"]
 
         save_settings(self.settings)
-        QMessageBox.information(
-            self,
-            tr("APP_NAME"),
-            tr("SETTINGS_SAVED_RESTART"))
         self.accept()
 
 class AddPortalDialog(QDialog):
@@ -529,7 +463,7 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         self.executor_combo.addItems(executors)
 
         self.main_layout.addWidget(self.executor_label, 1, 0)
@@ -615,8 +549,6 @@ class AddPortalDialog(QDialog):
         # Buttons
         self.buttons_layout = QHBoxLayout()
         self.remove_portal_button = QPushButton(tr("REMOVE"))
-        self.wineprefix_button = QPushButton(tr("WINEPREFIX_BUTTON"))
-        self.wineprefix_button.clicked.connect(self.select_wineprefix_folder)
         self.save_button = QPushButton(tr("SAVE_BUTTON"))
         self.save_button.clicked.connect(self.save_and_accept)
 
@@ -625,7 +557,6 @@ class AddPortalDialog(QDialog):
             self.remove_portal_button.clicked.connect(self.delete_portal)
 
         self.buttons_layout.addStretch()
-        self.buttons_layout.addWidget(self.wineprefix_button)
         self.buttons_layout.addWidget(self.save_button)
         self.main_layout.addLayout(self.buttons_layout, 9, 0, 1, 3)
 
@@ -712,20 +643,6 @@ class AddPortalDialog(QDialog):
             tr("IMAGE_FILTER"))
         if file_path:
             self.portal_gui_input.setText(file_path)
-
-    def select_wineprefix_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(
-            self,
-            tr("SELECT_WINEPREFIX_FOLDER"),
-            str(meganimus_wineprefix_dir))
-        if folder_path:
-            current_env = self.env_vars_input.text().strip()
-            wine_prefix = f'WINEPREFIX="{folder_path}"'
-            
-            if current_env:
-                self.env_vars_input.setText(f"{current_env} {wine_prefix}")
-            else:
-                self.env_vars_input.setText(wine_prefix)
 
     def get_form_data(self):
         env_vars_text = self.env_vars_input.text().strip()
@@ -935,7 +852,7 @@ class MultipleCreatePortalsDialog(QDialog):
         # Executor and combobox
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         self.executor_combo.addItems(executors)
         top_grid.addWidget(executor_label, 0, 0)
         top_grid.addWidget(self.executor_combo, 0, 1)
@@ -1356,7 +1273,7 @@ class MultipleEditPortalDialog(QDialog):
         # Executor
         self.executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         self.executor_combo.addItem(tr("DO_NOT_CHANGE"))
         self.executor_combo.addItems(executors)
         self.executor_combo.setCurrentIndex(0)
@@ -2691,31 +2608,29 @@ class Meganimus(QMainWindow):
 
         layout_mode = settings["design"].get("layout_mode", "classic")
 
-        icon_width_classic = settings["design"].get("icon_width_classic", 420)
-        icon_width_grid = settings["design"].get("icon_width_grid", 300)
+        art_width_classic = settings["design"].get("art_width_classic", 420)
+        art_width_grid = settings["design"].get("art_width_grid", 300)
 
-        if layout_mode in ("list"):
+        if layout_mode == "list":
             self.portal_list_widget.setViewMode(QListWidget.ViewMode.ListMode)
             self.portal_list_widget.setMovement(QListWidget.Movement.Static)
             self.portal_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)
-        elif layout_mode in ("grid"):
+        elif layout_mode == "grid":
             self.portal_list_widget.setViewMode(QListWidget.ViewMode.IconMode)
             self.portal_list_widget.setFlow(QListView.Flow.LeftToRight)
             self.portal_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)
-            icon_width = icon_width_grid
-            icon_height = int(icon_width * (620 / 1920))
-            grid_width = icon_width + 5
-            grid_height = icon_height + 30
-            self.portal_list_widget.setIconSize(QSize(icon_width, icon_height))
+            art_height = int(art_width_grid * (620 / 1920))
+            grid_width = art_width_grid + 5
+            grid_height = art_height + 30
+            self.portal_list_widget.setIconSize(QSize(art_width_grid, art_height))
             self.portal_list_widget.setGridSize(QSize(grid_width, grid_height))
             self.portal_list_widget.setMovement(QListWidget.Movement.Static)
-        elif layout_mode in ("classic"):
+        elif layout_mode == "classic":
             self.portal_list_widget.setViewMode(QListWidget.ViewMode.ListMode)
             self.portal_list_widget.setMovement(QListWidget.Movement.Static)
             self.portal_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)
-            icon_width = icon_width_classic
-            icon_height = int(icon_width * (620 / 1920))
-            self.portal_list_widget.setIconSize(QSize(icon_width, icon_height))
+            art_height = int(art_width_classic * (620 / 1920))
+            self.portal_list_widget.setIconSize(QSize(art_width_classic, art_height))
 
         self.main_layout.addWidget(self.portal_list_widget)
 
@@ -2803,6 +2718,20 @@ class Meganimus(QMainWindow):
         self.transfer_successful = False
 
         self.inhibit_cookie = None
+
+    def update_art_size(self):
+        settings = load_settings()
+
+        width = settings["design"].get("art_width_classic", 420)
+        height = int(width * (620 / 1920))
+
+        if settings["design"].get("layout_mode") == "grid":
+            width = settings["design"].get("art_width_grid", 246)
+            height = int(width * (620 / 1920))
+            self.portal_list_widget.setGridSize(QSize(width + 5, height + 30))
+
+        self.portal_list_widget.setIconSize(QSize(width, height))
+        self.load_portals()
 
     def show_global_context_menu(self, pos):
         global_pos = self.central_widget.mapToGlobal(pos)
@@ -3010,9 +2939,7 @@ class Meganimus(QMainWindow):
             meganimus_executor_dir / "RPCS3.AppImage.home",
             meganimus_executor_dir / "Ryubing.AppImage.home",
             meganimus_executor_dir / "Snes9x.AppImage.home",
-            meganimus_executor_dir / "Wine.AppImage.home",
             meganimus_executor_dir / "xemu.AppImage.home",
-            meganimus_wineprefix_dir,
         ]
 
         for subdir in subdirs:
@@ -3096,7 +3023,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
@@ -3114,59 +3041,46 @@ class Meganimus(QMainWindow):
         # Fix paths in .toml files if they don't match current meganimus_dir
         current_base = str(meganimus_home_dir)
 
-        for toml_file in meganimus_config_dir.glob("*.toml"):
+        for toml_file in meganimus_config_dir.glob("portal-info-*.toml"):
             try:
                 with open(toml_file, 'r+', encoding='utf-8') as f:
                     data = tomlkit.load(f)
                     modified = False
 
-                    # Handle meganimus-settings.toml executor commands
-                    if toml_file.name == "meganimus-settings.toml" and 'executor' in data:
-                        executor_data = data['executor']
-                        if isinstance(executor_data, dict):
-                            for key in executor_data:
-                                if key.endswith('_command') and isinstance(executor_data[key], str):
-                                    if '/App/Meganimus/' in executor_data[key]:
-                                        old_base = executor_data[key].split('/App/Meganimus/')[0]
-                                        if old_base != current_base:
-                                            executor_data[key] = executor_data[key].replace(old_base, current_base, 1)
-                                            modified = True
-
-                    # Handle portal files
                     for field in ['game_path', 'art_path', 'gui_path']:
-                        if field in data and isinstance(data[field], str):
-                            if '/App/Meganimus/' in data[field]:
-                                old_base = data[field].split('/App/Meganimus/')[0]
-                                if old_base != current_base:
-                                    data[field] = data[field].replace(old_base, current_base, 1)
-                                    modified = True
-
-                    # Handle WINEPREFIX in env_vars
-                    if 'env_vars' in data and isinstance(data['env_vars'], str):
-                        if 'WINEPREFIX=' in data['env_vars'] and '/App/Meganimus/' in data['env_vars']:
-                            env_vars = data['env_vars']
-
-                            # Find where WINEPREFIX path starts and ends
-                            prefix_start = env_vars.find('WINEPREFIX=') + 11
-                            prefix_end = env_vars.find(' ', prefix_start)
-                            if prefix_end == -1:
-                                prefix_end = len(env_vars)
-
-                            wineprefix_path = env_vars[prefix_start:prefix_end]
-
-                            if '/App/Meganimus/' in wineprefix_path:
-                                old_base = wineprefix_path.split('/App/Meganimus/')[0]
-                                if old_base != current_base:
-                                    new_path = wineprefix_path.replace(old_base, current_base, 1)
-                                    data['env_vars'] = env_vars[:prefix_start] + new_path + env_vars[prefix_end:]
-                                    modified = True
-
+                        if field in data and '/App/Meganimus/' in data[field]:
+                            old_base = data[field].split('/App/Meganimus/')[0]
+                            if old_base != current_base:
+                                data[field] = data[field].replace(old_base, current_base, 1)
+                                modified = True
+                    
                     if modified:
                         f.seek(0)
                         tomlkit.dump(data, f)
                         f.truncate()
             except:
                 continue
+
+        try:
+            with open(meganimus_settings_file, 'r+', encoding='utf-8') as f:
+                data = tomlkit.load(f)
+                modified = False
+
+                executor_data = data['executor']
+                if isinstance(executor_data, dict):
+                    for key in executor_data:
+                        if isinstance(executor_data[key], str) and '/App/Meganimus/' in executor_data[key]:
+                            old_base = executor_data[key].split('/App/Meganimus/')[0]
+                            if old_base != current_base:
+                                executor_data[key] = executor_data[key].replace(old_base, current_base, 1)
+                                modified = True
+                
+                if modified:
+                    f.seek(0)
+                    tomlkit.dump(data, f)
+                    f.truncate()
+        except:
+            pass
 
     def add_portal(self):
         dialog = AddPortalDialog(self)
@@ -3223,75 +3137,6 @@ class Meganimus(QMainWindow):
             if not game_path_full.exists():
                 QMessageBox.critical(self, tr("APP_NAME"), tr("ERROR_GAME_NOT_FOUND", path=str(game_path_full)))
                 return
-
-            if executor == "Wine" and game_path_full.suffix.lower() == ".iso":
-                iso_path = game_path_full
-                mount_point = None
-                loop_device = None
-
-                # Check if the ISO is already mounted
-                for line in open("/proc/mounts"):
-                    dev, mnt = line.split()[:2]
-                    if dev.startswith("/dev/loop") and iso_path.as_posix() in subprocess.getoutput(f"losetup {dev}"):
-                        mount_point = Path(mnt)
-                        loop_device = dev
-                        print(tr("ISO_ALREADY_MOUNTED", mount=str(mount_point)))
-                        break
-
-                # If not mounted, create loop device and mount it
-                if not mount_point:
-                    # Create loop device
-                    result = subprocess.run(
-                        ["udisksctl", "loop-setup", "-f", str(iso_path)],
-                        capture_output=True, text=True)
-                    if result.returncode != 0:
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_CREATION_FAILED", error=result.stderr))
-                        return
-
-                    match = re.search(r'/dev/loop\d+', result.stdout)
-                    if not match:
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("LOOP_DEVICE_NOT_FOUND"))
-                        return
-                    loop_device = match.group(0)
-
-                    # Mount loop device
-                    result_mount = subprocess.run(
-                        ["udisksctl", "mount", "-b", loop_device],
-                        capture_output=True, text=True)
-                    if result_mount.returncode != 0:
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_FAILED", error=result_mount.stderr))
-                        return
-
-                    # Get mount point
-                    match = re.search(r'at (/.+)', result_mount.stdout)
-                    mount_point = Path(match.group(1)) if match else None
-                    if not mount_point or not mount_point.exists():
-                        QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_MOUNT_POINT_NOT_FOUND"))
-                        return
-
-                # Look for the .exe inside the ISO
-                exe_files = []
-                for _ in range(20):
-                    exe_files = list(mount_point.glob("setup.exe")) or list(mount_point.rglob("*.exe"))
-                    if exe_files:
-                        break
-                    time.sleep(0.3)
-
-                if not exe_files:
-                    QMessageBox.critical(None, tr("APP_NAME"), tr("ISO_NO_EXE_FOUND"))
-                    return
-
-                game_path_full = exe_files[0]
-                print(tr("ISO_MOUNTED_EXE_FOUND", iso=str(iso_path), exe=str(game_path_full)))
-
-                # Save mounted ISO info
-                mounted_iso_info = meganimus_config_dir / "mounted_iso_info.toml"
-                with mounted_iso_info.open("w", encoding="utf-8") as f:
-                    tomlkit.dump({
-                        "iso_path": str(iso_path),
-                        "loop_device": loop_device,
-                        "mount_point": str(mount_point)
-                    }, f)
 
             if executor == "RPCS3" and game_path_full.suffix.lower() == ".iso":
                 iso_path = game_path_full
@@ -3399,9 +3244,28 @@ class Meganimus(QMainWindow):
             portal_args = portal_data.get('portal_args', '').strip()
             portal_args_list = portal_args.split() if portal_args else []
 
+            executors_args = {
+                "AzaharPlus": {"executor_args": "-f"},
+                "Cemu": {"executor_args": "-f -g"},
+                "Dolphin": {"executor_args": "--batch -e"},
+                "Duckstation": {"executor_args": "-fullscreen"},
+                "Eden": {"executor_args": "-f -g"},
+                "Flycast": {"executor_args": ""},
+                "MelonDS": {"executor_args": "-f"},
+                "mGBA": {"executor_args": "-f"},
+                "PCSX2": {"executor_args": "-fullscreen"},
+                "PPSSPP": {"executor_args": "--fullscreen --pause-menu-exit"},
+                "RMG": {"executor_args": "--fullscreen"},
+                "RPCS3": {"executor_args": "--no-gui --fullscreen"},
+                "Ryubing": {"executor_args": "-f"},
+                "Snes9x": {"executor_args": ""},
+                "xemu": {"executor_args": "-full-screen -dvd_path"},
+            }
+
             def build_executor_command(executor, game_path):
                 executor_command_str = settings["executor"].get(f"{executor.lower()}_command", "").strip()
-                executor_args_str = settings["executor"].get(f"{executor.lower()}_executor_args", "").strip()
+                executor_config = executors_args.get(executor, {"executor_args": ""})
+                executor_args_str = executor_config.get("executor_args", "").strip()
 
                 # Linux
                 if executor == "Linux":
@@ -3443,7 +3307,7 @@ class Meganimus(QMainWindow):
                     if '=' in item:
                         debug_command.append(item)
 
-            debug_command += executor_command + portal_args_list
+            debug_command.extend(command)
             print(tr("RUNNING_COMMAND", command=" ".join(debug_command)))
 
             self.portal_process = subprocess.Popen(
@@ -3589,7 +3453,7 @@ class Meganimus(QMainWindow):
         if icon is None:
             icon = self.windowIcon()
 
-        if layout_mode not in ["list"] and icon is not None:
+        if layout_mode != "list" and icon is not None:
             item.setIcon(icon)
 
         self.portal_list_widget.addItem(item)
@@ -3597,7 +3461,7 @@ class Meganimus(QMainWindow):
 
     def run_executors_auto_transfer(self):
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "Wine", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
 
         # Check which executors are missing
         missing_executors = []
