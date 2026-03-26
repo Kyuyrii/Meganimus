@@ -34,7 +34,7 @@ except locale.Error:
 if not LANG:
     LANG = 'en_US'
 
-__version__ = "3.0"
+__version__ = "3.1"
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_DIR" in os.environ:
@@ -200,7 +200,7 @@ def create_default_settings() -> dict:
             "azaharplus_command": "/home/*/App/Meganimus/executor/AzaharPlus.AppImage",
             "cemu_command": "/home/*/App/Meganimus/executor/Cemu.AppImage",
             "dolphin_command": "/home/*/App/Meganimus/executor/Dolphin.AppImage",
-            "duckstation_command": "/home/*/App/Meganimus/executor/Duckstation.AppImage",
+            "duckstation_command": "/home/*/App/Meganimus/executor/DuckStation.AppImage",
             "eden_command": "/home/*/App/Meganimus/executor/Eden.AppImage",
             "flycast_command": "/home/*/App/Meganimus/executor/Flycast.AppImage",
             "melonds_command": "/home/*/App/Meganimus/executor/MelonDS.AppImage",
@@ -345,7 +345,7 @@ class SettingsDialog(QDialog):
         # Store widgets for each executor
         self.executor_widgets = {}
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "DuckStation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
 
         for executor_name in executors:
             # Executor tab
@@ -463,7 +463,7 @@ class AddPortalDialog(QDialog):
         self.executor_combo = QComboBox()
 
         # List of executors
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "DuckStation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         self.executor_combo.addItems(executors)
 
         self.main_layout.addWidget(self.executor_label, 1, 0)
@@ -852,7 +852,7 @@ class MultipleCreatePortalsDialog(QDialog):
         # Executor and combobox
         executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "DuckStation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         self.executor_combo.addItems(executors)
         top_grid.addWidget(executor_label, 0, 0)
         top_grid.addWidget(self.executor_combo, 0, 1)
@@ -1273,7 +1273,7 @@ class MultipleEditPortalDialog(QDialog):
         # Executor
         self.executor_label = QLabel(tr("EXECUTOR"))
         self.executor_combo = QComboBox()
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "DuckStation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         self.executor_combo.addItem(tr("DO_NOT_CHANGE"))
         self.executor_combo.addItems(executors)
         self.executor_combo.setCurrentIndex(0)
@@ -2928,7 +2928,7 @@ class Meganimus(QMainWindow):
             meganimus_executor_dir / "AzaharPlus.AppImage.home",
             meganimus_executor_dir / "Cemu.AppImage.home",
             meganimus_executor_dir / "Dolphin.AppImage.home",
-            meganimus_executor_dir / "Duckstation.AppImage.home",
+            meganimus_executor_dir / "DuckStation.AppImage.home",
             meganimus_executor_dir / "Eden.AppImage.home",
             meganimus_executor_dir / "Flycast.AppImage.home",
             meganimus_executor_dir / "MelonDS.AppImage.home",
@@ -3023,7 +3023,7 @@ class Meganimus(QMainWindow):
 
         selected_executor_text = self.executor_filter.currentText()
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "DuckStation", "Eden", "Flycast", "Linux", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
         used_executors = set(portal_data.get("executor", "Linux") for portal_data, _ in portals)
         self.executor_filter.clear()
         self.executor_filter.addItem(tr("ALL_PORTALS"))
@@ -3248,7 +3248,7 @@ class Meganimus(QMainWindow):
                 "AzaharPlus": {"executor_args": "-f"},
                 "Cemu": {"executor_args": "-f -g"},
                 "Dolphin": {"executor_args": "--batch -e"},
-                "Duckstation": {"executor_args": "-fullscreen"},
+                "DuckStation": {"executor_args": "-fullscreen"},
                 "Eden": {"executor_args": "-f -g"},
                 "Flycast": {"executor_args": ""},
                 "MelonDS": {"executor_args": "-f"},
@@ -3461,7 +3461,7 @@ class Meganimus(QMainWindow):
 
     def run_executors_auto_transfer(self):
 
-        executors = ["AzaharPlus", "Cemu", "Dolphin", "Duckstation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
+        executors = ["AzaharPlus", "Cemu", "Dolphin", "DuckStation", "Eden", "Flycast", "MelonDS", "mGBA", "PCSX2", "PPSSPP", "RMG", "RPCS3", "Ryubing", "Snes9x", "xemu"]
 
         # Check which executors are missing
         missing_executors = []
