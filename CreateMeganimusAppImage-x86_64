@@ -53,32 +53,7 @@ if [ -z "$APPIMAGE" ]; then
     export APPDIR="${self%/*}"
 fi
 
-export PATH="$APPDIR/bin:$PATH"
-export APPIMAGE_EXTRACT_AND_RUN=1
 export QT_QPA_PLATFORMTHEME=xdgdesktopportal
-
-mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
-mkdir -p "$HOME/.local/share/applications"
-
-# Copy icon if it doesn't exist.
-
-if [ ! -f "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.kyuyrii.meganimus.svg" ]; then
-    mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
-    cp "$APPDIR/io.github.kyuyrii.meganimus.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/"
-fi
-
-# Copy/Update the .desktop file
-if [ -f "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop" ]; then
-    # If it already exists, update.
-    sed -i "s|Exec=.*|Exec=$APPIMAGE|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
-    sed -i "s|Name=.*|Name=Meganimus [AppImage]|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
-else
-    # If it doesn't exist, copy and update.
-    cp "$APPDIR/io.github.kyuyrii.meganimus.desktop" "$HOME/.local/share/applications/"
-    sed -i "s|Exec=.*|Exec=$APPIMAGE|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
-    sed -i "s|Name=.*|Name=Meganimus [AppImage]|" "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
-    chmod +x "$HOME/.local/share/applications/io.github.kyuyrii.meganimus.desktop"
-fi
 
 exec "$APPDIR/Meganimus" "$@"
 EOF
