@@ -22,7 +22,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "4.0" + __package_type__
+__version__ = "4.1" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -214,38 +214,38 @@ def create_default_settings() -> dict:
             "dot_local_dir": "",
         },
         "executor": {
-            "azahar_package_type": "",
+            "azahar_package_type": "indefinite",
             "azahar_command": "",
-            "cemu_package_type": "",
+            "cemu_package_type": "indefinite",
             "cemu_command": "",
-            "dolphin_package_type": "",
+            "dolphin_package_type": "indefinite",
             "dolphin_command": "",
-            "duckstation_package_type": "",
+            "duckstation_package_type": "indefinite",
             "duckstation_command": "",
-            "eden_package_type": "",
+            "eden_package_type": "indefinite",
             "eden_command": "",
-            "flycast_package_type": "",
+            "flycast_package_type": "indefinite",
             "flycast_command": "",
-            "melonds_package_type": "",
+            "melonds_package_type": "indefinite",
             "melonds_command": "",
-            "mgba_package_type": "",
+            "mgba_package_type": "indefinite",
             "mgba_command": "",
-            "pcsx2_package_type": "",
+            "pcsx2_package_type": "indefinite",
             "pcsx2_command": "",
             "ppsspp_command": "",
-            "rmg_package_type": "",
+            "rmg_package_type": "indefinite",
             "rmg_command": "",
-            "rpcs3_package_type": "",
+            "rpcs3_package_type": "indefinite",
             "rpcs3_command": "",
-            "ryubing_package_type": "",
+            "ryubing_package_type": "indefinite",
             "ryubing_command": "",
-            "snes9x_package_type": "",
+            "snes9x_package_type": "indefinite",
             "snes9x_command": "",
-            "umu_package_type": "",
+            "umu_package_type": "indefinite",
             "umu_command": "",
-            "wine_package_type": "",
+            "wine_package_type": "indefinite",
             "wine_command": "",
-            "xemu_package_type": "",
+            "xemu_package_type": "indefinite",
             "xemu_command": "",
         },
         "other": {
@@ -420,7 +420,7 @@ class SettingsDialog(QDialog):
             package_combo = QComboBox()
 
             # Filter available package types based on default commands
-            available_packages = ["AppImage"]
+            available_packages = [tr("INDEFINITE")]
             default_cmds = default_commands.get(executor_name, {})
             if default_cmds.get("Snap"):
                 available_packages.append("Snap")
@@ -430,8 +430,12 @@ class SettingsDialog(QDialog):
             package_combo.addItems(available_packages)
 
             # Load saved package type
-            saved_package_type = self.settings["executor"].get(f"{executor_name.lower()}_package_type", "AppImage")
-            index = package_combo.findText(saved_package_type)
+            saved_package_type = self.settings["executor"].get(f"{executor_name.lower()}_package_type", "indefinite")
+            if saved_package_type == "indefinite":
+                display_text = tr("INDEFINITE")
+            else:
+                display_text = saved_package_type
+            index = package_combo.findText(display_text)
             if index >= 0:
                 package_combo.setCurrentIndex(index)
 
@@ -442,10 +446,10 @@ class SettingsDialog(QDialog):
             command_label = QLabel(tr("EXECUTOR_COMMAND"))
             path_input = QLineEdit()
 
-            # Load saved command, only for AppImage
+            # Load saved command, only for indefinite
             saved_command = self.settings["executor"].get(f"{executor_name.lower()}_command", "")
 
-            if saved_package_type == "AppImage":
+            if saved_package_type == "indefinite":
                 path_input.setText(saved_command)
                 path_input.setReadOnly(False)
             else:
@@ -464,7 +468,7 @@ class SettingsDialog(QDialog):
             tab_layout.addLayout(button_layout)
 
             # Enable/disable browse button based on package
-            browse_btn.setEnabled(saved_package_type == "AppImage")
+            browse_btn.setEnabled(saved_package_type == "indefinite")
 
             # Add tab to tab widget
             tabs.addTab(tab, executor_name)
@@ -489,7 +493,7 @@ class SettingsDialog(QDialog):
     def _on_package_type_changed(self, executor_name, path_input, browse_btn, default_commands, index):
         package = self.executor_widgets[executor_name]["package_combo"].currentText()
 
-        if package == "AppImage":
+        if package == tr("INDEFINITE"):
             path_input.setText("")
             path_input.setReadOnly(False)
             browse_btn.setEnabled(True)
@@ -519,7 +523,7 @@ class SettingsDialog(QDialog):
 
     def browse_executor(self, executor_name):
         widgets = self.executor_widgets[executor_name]
-        if widgets["package_combo"].currentText() == "AppImage":
+        if widgets["package_combo"].currentText() == tr("INDEFINITE"):
             path, _ = QFileDialog.getOpenFileName(self, tr("SELECT_FILE"))
             if path:
                 widgets["path_input"].setText(path)
@@ -537,7 +541,13 @@ class SettingsDialog(QDialog):
 
         # Save all executors
         for executor_name, widgets in self.executor_widgets.items():
-            self.settings["executor"][f"{executor_name.lower()}_package_type"] = widgets["package_combo"].currentText()
+            package_text = widgets["package_combo"].currentText()
+            if package_text == tr("INDEFINITE"):
+                package_type = "indefinite"
+            else:
+                package_type = package_text
+
+            self.settings["executor"][f"{executor_name.lower()}_package_type"] = package_type
             self.settings["executor"][f"{executor_name.lower()}_command"] = widgets["path_input"].text()
 
         save_settings(self.settings)
@@ -2370,10 +2380,10 @@ class ShortcutManager(QDialog):
         else:
             settings = load_settings()
             executor_cmd = settings["executor"].get(f"{executor.lower()}_command", "").strip()
-            executor_package_type = settings["executor"].get(f"{executor.lower()}_package_type", "AppImage")
+            executor_package_type = settings["executor"].get(f"{executor.lower()}_package_type", "indefinite")
 
-            # Only add quotes if package_type is AppImage
-            if executor_package_type == "AppImage":
+            # Only add quotes if package_type is indefinite
+            if executor_package_type == "indefinite":
                 cmd_parts.append(f'"{executor_cmd}"')
             else:
                 cmd_parts.append(executor_cmd)
