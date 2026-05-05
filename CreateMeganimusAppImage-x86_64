@@ -1,13 +1,13 @@
 #!/bin/bash
 
-sudo apt install python3-venv python3-dev meson libdbus-1-dev libglib2.0-dev -y
+sudo apt install python3-venv -y
 
 # Clean previous builds
 rm -rf AppDir build dist venv Meganimus.spec Meganimus*.AppImage
 
 python3 -m venv venv
 source venv/bin/activate
-pip install pyinstaller PyQt6==6.10.1 PyQt6-Qt6==6.10.1 tomlkit requests psutil dbus-python
+pip install pyinstaller PyQt6==6.10.1 PyQt6-Qt6==6.10.1 tomlkit requests
 
 # I'm using Kvantum from lxqt-support-core24 because it's built without KDE dependencies.
 pyinstaller --onefile --windowed --name Meganimus \
