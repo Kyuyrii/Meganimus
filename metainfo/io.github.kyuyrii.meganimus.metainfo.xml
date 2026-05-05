@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.kyuyrii.meganimus</id>
+  <url type="homepage">https://github.com/Kyuyrii/Meganimus</url>
+  <url type="bugtracker">https://github.com/Kyuyrii/Meganimus/issues</url>
+  <url type="vcs-browser">https://github.com/Kyuyrii/Meganimus</url>
+  <developer_name>Kyuyrii</developer_name>
+  <name>Meganimus</name>
+  <summary>A shortcut creator for games</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <content_rating type="oars-1.1"/>
+  <categories>
+    <category>Game</category>
+    <category>Utility</category>
+  </categories>
+  <description>
+    <p>
+      A shortcut creator for games. Making it easy to create shortcuts for native games, games that run via emulators, and games that run via Wine or UMU.
+    </p>
+  </description>
+  <releases>
+    <release version="4.0" date="2026-05-05">
+      <description>
+        <ul>
+          <li>First version after the change of purpose.</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <launchable type="desktop-id">io.github.kyuyrii.meganimus.desktop</launchable>
+  <branding>
+    <color type="primary" scheme_preference="light">#232634</color>
+    <color type="primary" scheme_preference="dark">#232634</color>
+  </branding>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/Kyuyrii/Meganimus/4f33ef3977aa734be059caa901c99cfa3cc1efe3/metainfo/meganimus_qt_style_breeze.png</image>
+      <caption>Meganimus using the Qt style Breeze</caption>
+    </screenshot>
+  </screenshots>
+
+</component>
