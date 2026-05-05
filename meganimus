@@ -22,7 +22,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "4.1" + __package_type__
+__version__ = "4.2" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -53,20 +53,20 @@ else:
 
 if os.environ.get("XDG_CURRENT_DESKTOP", "").lower() not in ("kde", "lxqt"):
     add_essence_icon = "list-add"
-    edit_essence_icon = "document-edit"
-    transfer_arts_icon = "down"
-    search_icon = "system-search"
-    document_open_icon = "document-open"
     document_open_folder_icon = "folder-open"
+    document_open_icon = "document-open"
+    edit_essence_icon = "document-edit"
     help_about_icon = "help-about"
+    search_icon = "system-search"
+    transfer_arts_icon = "down"
 else:
     add_essence_icon = "list-add"
-    edit_essence_icon = "document-edit"
-    transfer_arts_icon = "download"
-    search_icon = "edit-find"
-    document_open_icon = "document-open"
     document_open_folder_icon = "folder-open"
+    document_open_icon = "document-open"
+    edit_essence_icon = "document-edit"
     help_about_icon = "help-about"
+    search_icon = "edit-find"
+    transfer_arts_icon = "download"
 
 # Translation System
 try:
@@ -461,10 +461,16 @@ class SettingsDialog(QDialog):
             tab_layout.addWidget(command_label)
             tab_layout.addWidget(path_input)
 
-            # Button
+            # Buttons layout (Origin + Browse)
             button_layout = QHBoxLayout()
+
+            origin_btn = QPushButton(tr("ORIGIN"))
+            origin_btn.clicked.connect(partial(self.open_executor_origin, executor_name))
+            button_layout.addWidget(origin_btn)
+
             browse_btn = QPushButton(tr("BROWSE_BUTTON"))
             button_layout.addWidget(browse_btn)
+
             tab_layout.addLayout(button_layout)
 
             # Enable/disable browse button based on package
@@ -489,6 +495,30 @@ class SettingsDialog(QDialog):
         save_btn = QPushButton(tr("SAVE_BUTTON"))
         save_btn.clicked.connect(self.save_and_close)
         layout.addWidget(save_btn, 7, 1, alignment=Qt.AlignmentFlag.AlignRight)
+
+    def open_executor_origin(self, executor_name):
+        urls = {
+            "Azahar": "https://github.com/azahar-emu/azahar",
+            "Cemu": "https://github.com/cemu-project/Cemu",
+            "Dolphin": "https://github.com/dolphin-emu/dolphin",
+            "DuckStation": "https://github.com/stenzek/duckstation",
+            "Eden": "https://git.eden-emu.dev/eden-emu/eden",
+            "Flycast": "https://github.com/flyinghead/flycast",
+            "MelonDS": "https://github.com/melonDS-emu/melonDS",
+            "mGBA": "https://github.com/mgba-emu/mgba",
+            "PCSX2": "https://github.com/PCSX2/pcsx2",
+            "PPSSPP": "https://github.com/hrydgard/ppsspp",
+            "RMG": "https://github.com/Rosalie241/RMG",
+            "RPCS3": "https://github.com/RPCS3/rpcs3",
+            "Ryubing": "https://git.ryujinx.app/projects/Ryubing",
+            "Snes9x": "https://github.com/snes9xgit/snes9x",
+            "UMU": "https://github.com/Open-Wine-Components/umu-launcher",
+            "Wine": "https://gitlab.winehq.org/wine/wine",
+            "xemu": "https://github.com/xemu-project/xemu",
+        }
+        url = urls.get(executor_name)
+        if url:
+            subprocess.Popen(['xdg-open', url])
 
     def _on_package_type_changed(self, executor_name, path_input, browse_btn, default_commands, index):
         package = self.executor_widgets[executor_name]["package_combo"].currentText()
@@ -970,11 +1000,13 @@ class MultipleCreateEssencesDialog(QDialog):
         name_layout.addWidget(name_input)
         layout.addLayout(name_layout)
 
-        # WinePrefix
+        # Wineprefix
         prefix_layout = QHBoxLayout()
         prefix_label = QLabel(tr("WINEPREFIX"))
         prefix_input = QLineEdit("")
-        prefix_button = QPushButton(tr("BROWSE_BUTTON"))
+        prefix_button = QPushButton()
+        prefix_button.setIcon(QIcon.fromTheme(document_open_folder_icon))
+        prefix_button.setToolTip(tr("BROWSE_BUTTON"))
         prefix_layout.addWidget(prefix_label)
         prefix_layout.addWidget(prefix_input)
         prefix_layout.addWidget(prefix_button)
@@ -1258,7 +1290,7 @@ class MultipleEditEssenceDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("MULTIPLE_ESSENCE_EDITOR"))
-        self.resize(580, 520)
+        self.resize(700, 480)
 
         # Main layout
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
@@ -1310,7 +1342,7 @@ class MultipleEditEssenceDialog(QDialog):
         splitter.addWidget(left_widget)
         splitter.addWidget(right_widget)
 
-        splitter.setSizes([100, 380])
+        splitter.setSizes([60, 420])
 
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(splitter)
@@ -1421,6 +1453,7 @@ class MultipleEditEssenceDialog(QDialog):
         buttons_layout.addWidget(self.save_button)
 
         right_layout.addLayout(buttons_layout, row, 0, 1, 3)
+        right_layout.setContentsMargins(6, 6, 0, 6)
 
         # Loads essences
         self.essence_checkboxes = {}
