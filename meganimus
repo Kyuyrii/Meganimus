@@ -22,7 +22,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "4.2" + __package_type__
+__version__ = "4.3" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -2168,7 +2168,7 @@ class ShortcutManager(QDialog):
             # Combine saved states with existing shortcuts
             was_checked = self.checkbox_states[self.current_view].get(essence, False)
             exists_in_folder = essence in existing_desktops
-            cb.setChecked(was_checked or exists_in_folder)
+            cb.setChecked(self.checkbox_states[self.current_view].get(essence, essence in existing_desktops))
             new_checkboxes[essence] = cb
         self.checkbox_widgets[self.current_view] = new_checkboxes
 

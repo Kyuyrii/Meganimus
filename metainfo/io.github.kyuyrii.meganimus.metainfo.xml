@@ -21,10 +21,10 @@
     </p>
   </description>
   <releases>
-    <release version="4.2" date="2026-05-05">
+    <release version="4.3" date="2026-05-05">
       <description>
         <ul>
-          <li>Added an "Origin" button to the configuration window to open the repository of the selected executor.</li>
+          <li>Correcting a problem with the shortcut manager, previously created shortcuts were being re-selected, going against the user's choice to unselect them.</li>
         </ul>
       </description>
     </release>
