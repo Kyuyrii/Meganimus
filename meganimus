@@ -22,7 +22,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "4.4" + __package_type__
+__version__ = "4.5" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -401,7 +401,7 @@ class SettingsDialog(QDialog):
             "Ryubing": {"Snap": "snap run ryubing-emulator", "Flatpak": "flatpak run io.github.ryubing.Ryujinx"},
             "Snes9x": {"Snap": "snap run snes9x-gtk", "Flatpak": "flatpak run com.snes9x.Snes9x"},
             "UMU": {"Snap": "snap run umu-run", "Flatpak": "flatpak run org.openwinecomponents.umu.umu-launcher"},
-            "Wine": {"Snap": "", "Flatpak": "flatpak run org.winehq.Wine"},
+            "Wine": {"Snap": "snap run winehq-stable", "Flatpak": "flatpak run org.winehq.Wine"},
             "xemu": {"Snap": "", "Flatpak": "flatpak run app.xemu.xemu"},
         }
 
