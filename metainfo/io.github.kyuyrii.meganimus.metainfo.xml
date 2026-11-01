@@ -21,10 +21,10 @@
     </p>
   </description>
   <releases>
-    <release version="4.4" date="2026-05-10">
+    <release version="4.5" date="2026-10-28">
       <description>
         <ul>
-          <li>The shortcut manager now uses tabs instead of combo boxes, in an attempt to ensure that the user's choices are respected.</li>
+          <li>Attempting to add support for the Snap version of the Wine executor.</li>
         </ul>
       </description>
     </release>
