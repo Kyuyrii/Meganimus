@@ -45,7 +45,7 @@ if [ -z "$APPIMAGE" ]; then
     export APPDIR="${self%/*}"
 fi
 
-# export QT_QPA_PLATFORMTHEME=xdgdesktopportal
+export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 
 exec "$APPDIR/Meganimus" "$@"
 EOF
