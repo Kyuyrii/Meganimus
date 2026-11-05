@@ -9,12 +9,11 @@ python3 -m venv venv
 source venv/bin/activate
 pip install pyinstaller PyQt6==6.12.0 PyQt6-Qt6==6.12.0 tomlkit requests
 
-# I'm using Kvantum from lxqt-support-core24 because it's built without KDE dependencies.
 pyinstaller --onefile --windowed --name Meganimus meganimus
 
 if ! command -v appimagetool &> /dev/null; then
     echo "Downloading appimagetool..."
-    wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+    wget https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage -O appimagetool
     chmod +x appimagetool
 fi
 
