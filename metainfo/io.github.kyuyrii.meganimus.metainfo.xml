@@ -48,7 +48,7 @@
   </branding>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Kyuyrii/Meganimus/84907f05c39c9ebf8805d9060871c3a8097953af/metainfo/meganimus_lubuntu.png</image>
+      <image width="1568" height="900">https://raw.githubusercontent.com/Kyuyrii/Meganimus/84907f05c39c9ebf8805d9060871c3a8097953af/metainfo/meganimus_lubuntu.png</image>
       <caption>Meganimus on Lubuntu</caption>
     </screenshot>
   </screenshots>
