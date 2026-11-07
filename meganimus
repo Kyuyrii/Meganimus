@@ -12,6 +12,7 @@ import re
 import tempfile
 from pathlib import Path
 from functools import partial
+import ast
 
 if os.environ.get("SNAP"):
     __package_type__ = " [Snap]"
@@ -22,7 +23,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "4.5" + __package_type__
+__version__ = "5.0" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -60,13 +61,13 @@ if os.environ.get("XDG_CURRENT_DESKTOP", "").lower() not in ("kde", "lxqt"):
     search_icon = "system-search"
     transfer_arts_icon = "down"
 else:
-    add_essence_icon = "list-add"
-    document_open_folder_icon = "folder-open"
-    document_open_icon = "document-open"
-    edit_essence_icon = "document-edit"
-    help_about_icon = "help-about"
-    search_icon = "edit-find"
-    transfer_arts_icon = "download"
+    add_essence_icon = "list-add-symbolic"
+    document_open_folder_icon = "folder-open-symbolic"
+    document_open_icon = "document-open-symbolic"
+    edit_essence_icon = "document-edit-symbolic"
+    help_about_icon = "help-about-symbolic"
+    search_icon = "edit-find-symbolic"
+    transfer_arts_icon = "download-symbolic"
 
 # Translation System
 try:
@@ -111,10 +112,10 @@ def load_translations():
                     lang_name = lang_data.get("language_name", lang_code)
                     toml_languages[lang_name] = lang_code
 
-                    print(f"Loaded translation: {lang_name} ({lang_code})")
+                    print(f"[Meganimus]: Loaded translation: {lang_name} ({lang_code})")
 
                 except Exception as e:
-                    print(f"Error loading translation {toml_file}: {e}")
+                    print(f"[Meganimus]: Error loading translation {toml_file}: {e}")
 
     return toml_translations, toml_languages
 
@@ -145,15 +146,15 @@ def tr(key, **kwargs):
 
 # PyQt6 Imports
 try:
-    from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QDialog, QGridLayout, QLabel,
+    from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QToolBar, QDialog, QGridLayout, QLabel,
     QLineEdit, QHBoxLayout, QFileDialog, QComboBox, QCheckBox, QListWidgetItem, QStyleFactory, QButtonGroup, QSplitter, QScrollArea,
     QRadioButton, QAbstractItemView, QTreeWidget, QTreeWidgetItem, QMenu, QListView, QSpinBox, QTextEdit, QProgressDialog, QTabWidget)
     from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer, QEvent, QTranslator, QLibraryInfo, QEventLoop
     from PyQt6.QtGui import QAction, QIcon, QPixmap, QPalette, QColor, QTextCharFormat, QTextCursor
     from PyQt6.QtNetwork import QLocalServer, QLocalSocket
-    print("Using PyQt6")
+    print("[Meganimus]: Using PyQt6")
 except ImportError:
-    print("PyQt6 not found")
+    print("[Meganimus]: PyQt6 not found")
     sys.exit(1)
 
 ESSENCE_LOCALE_OPTIONS = [
@@ -190,6 +191,57 @@ ESSENCE_LOCALE_OPTIONS = [
     'ไทย (th_TH.UTF-8)',
     'עברית (he_IL.UTF-8)',
 ]
+
+def get_host_path(virtual_path):
+    if not (os.environ.get("SNAP") or os.environ.get("container") == "flatpak"):
+        return virtual_path
+
+    if not virtual_path or not virtual_path.startswith("/run/user/"):
+        return virtual_path
+
+    try:
+        parts = Path(virtual_path).parts
+        doc_index = parts.index("doc")
+        doc_id = parts[doc_index + 1]
+    except (ValueError, IndexError):
+        return virtual_path
+
+    try:
+        out = subprocess.check_output([
+            "gdbus", "call", "--session",
+            "--dest", "org.freedesktop.portal.Documents",
+            "--object-path", "/org/freedesktop/portal/documents",
+            "--method", "org.freedesktop.portal.Documents.GetHostPaths",
+            f'["{doc_id}"]'
+        ], text=True, timeout=3)
+    except Exception:
+        return virtual_path
+
+    try:
+        data = ast.literal_eval(out.strip().rstrip(","))
+        paths_map = data[0]
+    except Exception:
+        return virtual_path
+
+    if doc_id not in paths_map:
+        return virtual_path
+
+    try:
+        host_path = paths_map[doc_id].decode("utf-8", errors="surrogateescape")
+    except Exception:
+        return virtual_path
+
+    sub_parts = parts[doc_index + 2:]
+
+    if not sub_parts:
+        return host_path
+
+    host_path_obj = Path(host_path)
+
+    if host_path_obj.name == sub_parts[-1]:
+        return host_path
+
+    return str(host_path_obj / Path(*sub_parts))
 
 def create_default_settings() -> dict:
     """Provides default settings for first-time creation."""
@@ -389,8 +441,8 @@ class SettingsDialog(QDialog):
             "Azahar": {"Snap": "snap run azaharplus-emulator", "Flatpak": "flatpak run org.azahar_emu.Azahar"},
             "Cemu": {"Snap": "snap run cemu-emulator", "Flatpak": "flatpak run info.cemu.Cemu"},
             "Dolphin": {"Snap": "snap run dolphin-emulator-kyu", "Flatpak": "flatpak run org.DolphinEmu.dolphin-emu"},
-            "DuckStation": {"Snap": "snap run duckstation-gpl", "Flatpak": "flatpak run org.duckstation.DuckStation"},
-            "Eden": {"Snap": "snap run eden-emulator", "Flatpak": ""},
+            "DuckStation": {"Snap": "snap run duckstation-gpl", "Flatpak": ""},
+            "Eden": {"Snap": "snap run eden-emulator", "Flatpak": "flatpak run dev.eden_emu.eden"},
             "Flycast": {"Snap": "snap run flycast-emulator", "Flatpak": "flatpak run org.flycast.Flycast"},
             "MelonDS": {"Snap": "snap run melonds-emulator", "Flatpak": "flatpak run net.kuribo64.melonDS"},
             "mGBA": {"Snap": "snap run mgba-emulator", "Flatpak": "flatpak run io.mgba.mGBA"},
@@ -556,7 +608,7 @@ class SettingsDialog(QDialog):
         if widgets["package_combo"].currentText() == tr("INDEFINITE"):
             path, _ = QFileDialog.getOpenFileName(self, tr("SELECT_FILE"))
             if path:
-                widgets["path_input"].setText(path)
+                widgets["path_input"].setText(get_host_path(path))
 
     def save_and_close(self):
         selected_style = self.style_combo.currentText()
@@ -731,7 +783,7 @@ class AddEssenceDialog(QDialog):
             tr("SELECT_WINEPREFIX_FOLDER"),
             str(meganimus_home_dir))
         if dir_path:
-            self.wineprefix_input.setText(dir_path)
+            self.wineprefix_input.setText(get_host_path(dir_path))
 
     def select_file(self):
         wineprefix = self.wineprefix_input.text().strip()
@@ -745,13 +797,20 @@ class AddEssenceDialog(QDialog):
         else:
             start_dir = str(meganimus_home_dir)
 
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            tr("SELECT_GAME"),
-            start_dir,
-            "")
+        if os.environ.get("SNAP") or os.environ.get("container") == "flatpak":
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                tr("SELECT_GAME"),
+                "",
+                "")
+        else:
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                tr("SELECT_GAME"),
+                start_dir,
+                "")
         if file_path:
-            self.game_path_input.setText(file_path)
+            self.game_path_input.setText(get_host_path(file_path))
 
     def select_folder(self):
         folder_path = QFileDialog.getExistingDirectory(
@@ -967,12 +1026,12 @@ class MultipleCreateEssencesDialog(QDialog):
     def add_files(self):
         files, _ = QFileDialog.getOpenFileNames(self, tr("SELECT_GAME"), "", "")
         for f in files:
-            self.add_file_item(f)
+            self.add_file_item(get_host_path(f))
 
     def add_folders(self):
         folder = QFileDialog.getExistingDirectory(self, tr("SELECT_GAME_FOLDER"), "")
         if folder:
-            self.add_file_item(folder)
+            self.add_file_item(get_host_path(folder))
 
     def remove_selected_item(self):
         selected = self.file_list.currentItem()
@@ -1016,7 +1075,7 @@ class MultipleCreateEssencesDialog(QDialog):
 
         # QTreeWidgetItem with child containing widget
         parent_item = QTreeWidgetItem(self.file_list)
-        parent_item.setText(0, Path(path).name)
+        parent_item.setText(0, path)
         child_item = QTreeWidgetItem(parent_item)
         child_item.setFlags(child_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
         self.file_list.setItemWidget(child_item, 0, item_widget)
@@ -1033,7 +1092,7 @@ class MultipleCreateEssencesDialog(QDialog):
             tr("SELECT_WINEPREFIX_FOLDER"),
             str(meganimus_home_dir))
         if dir_path:
-            line_edit.setText(dir_path)
+            line_edit.setText(get_host_path(dir_path))
 
     def save_multiple(self):
         executor = self.executor_combo.currentText()
@@ -1089,8 +1148,8 @@ class MultipleCreateEssencesDialog(QDialog):
             safe_essence_name = name.replace(" ", "_").lower()
             file_path = meganimus_config_dir / f"essence-info-{safe_essence_name}.toml"
 
-            # Determine wineprefix
-            if self.auto_wineprefix_cb.isChecked():
+            # Determine wineprefix (Wine or UMU)
+            if executor in ["Wine", "UMU"] and self.auto_wineprefix_cb.isChecked():
                 prefix_path = Path(item.path)
                 while prefix_path != prefix_path.parent:
                     if prefix_path.name.lower() == "drive_c":
@@ -1530,7 +1589,7 @@ class MultipleEditEssenceDialog(QDialog):
             "",
             "",)
         if file_path:
-            self.game_input.setText(file_path)
+            self.game_input.setText(get_host_path(file_path))
 
     def select_folder(self):
         folder_path = QFileDialog.getExistingDirectory(
@@ -1538,7 +1597,7 @@ class MultipleEditEssenceDialog(QDialog):
             tr("SELECT_GAME_FOLDER"),
             "",)
         if folder_path:
-            self.game_input.setText(folder_path)
+            self.game_input.setText(get_host_path(folder_path))
 
     def select_wineprefix(self):
         dir_path = QFileDialog.getExistingDirectory(
@@ -1546,7 +1605,7 @@ class MultipleEditEssenceDialog(QDialog):
             tr("SELECT_WINEPREFIX_FOLDER"),
             str(meganimus_home_dir))
         if dir_path:
-            self.wineprefix_input.setText(dir_path)
+            self.wineprefix_input.setText(get_host_path(dir_path))
 
     def select_essence_gui(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -2299,7 +2358,7 @@ class ShortcutManager(QDialog):
                 if self.is_meganimus_desktop(f):
                     f.unlink()
             except Exception as e:
-                print(tr("ERROR_REMOVING_FILE", file=f, error=e))
+                print(f"[Meganimus]: Error removing {f}: {e}")
 
     def update_and_apply(self):
         desktop_dir = Path(self.desktop_dir_input.text().strip())
@@ -2490,7 +2549,7 @@ class ShortcutManager(QDialog):
             with open(desktop_file, "w", encoding="utf-8") as f:
                 f.write("\n".join(content_lines) + "\n")
         except Exception as e:
-            print(tr("ERROR_CREATING_FILE", file=desktop_file, error=e))
+            print(f"[Meganimus]: Error creating {desktop_file}: {e}")
 
 class Meganimus(QMainWindow):
     def __init__(self):
@@ -2532,15 +2591,15 @@ class Meganimus(QMainWindow):
 
         self.setup_directories()
 
+        # Toolbar
+        self.toolbar = QToolBar()
+        self.toolbar.setMovable(False)
+        self.toolbar.setFloatable(False)
+        self.toolbar.setVisible(settings["design"].get("toolbar_visible", True))
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolbar)
+
         # MenuBar
         self.menu_bar = self.menuBar()
-
-        # Menu ESSENCE
-        self.essence_menu = self.menu_bar.addMenu(tr("ESSENCE"))
-
-        self.open_game_path_action = QAction(tr("OPEN_GAME_PATH"), self)
-        self.open_game_path_action.triggered.connect(partial(self.open_path, "game"))
-        self.essence_menu.addAction(self.open_game_path_action)
 
         # Menu MANAGE
         self.manage_menu = self.menu_bar.addMenu(tr("MANAGE"))
@@ -2580,27 +2639,38 @@ class Meganimus(QMainWindow):
         self.about_action.triggered.connect(self.show_about)
         self.extra_menu.addAction(self.about_action)
 
+        # Size of icons
+        self.toolbar.setIconSize(QSize(32, 32))
+
         self.edit_essence_action = QAction(QIcon.fromTheme(edit_essence_icon), tr("MODIFY_ESSENCE"), self)
         self.edit_essence_action.triggered.connect(self.edit_essence)
+        self.toolbar.addAction(self.edit_essence_action)
 
         self.add_essence_action = QAction(QIcon.fromTheme(add_essence_icon), tr("CREATE_ESSENCE"), self)
         self.add_essence_action.triggered.connect(self.add_essence)
+        self.toolbar.addAction(self.add_essence_action)
 
         self.transfer_arts_action = QAction(QIcon.fromTheme(transfer_arts_icon), tr("TRANSFER_ICONS"), self)
         self.transfer_arts_action.triggered.connect(self.run_sgdb_auto_transfer)
+        self.toolbar.addAction(self.transfer_arts_action)
 
         self.search_action = QAction(QIcon.fromTheme(search_icon), tr("SEARCH"), self)
         self.search_action.triggered.connect(self.toggle_search_bar)
+        self.toolbar.addAction(self.search_action)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout()
         self.central_widget.setLayout(self.main_layout)
 
+        if not settings["design"].get("toolbar_visible", True):
+            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.central_widget.customContextMenuRequested.connect(self.show_global_context_menu)
+
+        self.toolbar.visibilityChanged.connect(self.save_toolbar_visibility)
+
         self.essence_list_widget = QListWidget()
         self.essence_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.essence_list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.essence_list_widget.customContextMenuRequested.connect(self.show_global_context_menu)
 
         self._last_selected_items = []
         self.essence_list_widget.itemSelectionChanged.connect(self.ensure_selection)
@@ -2661,6 +2731,7 @@ class Meganimus(QMainWindow):
         # ===== Context menu =====
         self.global_context_menu = QMenu(self)
         self.global_context_menu.clear()
+        # Menu of toolbar
         self.global_context_menu.addAction(self.edit_essence_action)
         self.global_context_menu.addAction(self.add_essence_action)
         self.global_context_menu.addAction(self.transfer_arts_action)
@@ -2676,6 +2747,17 @@ class Meganimus(QMainWindow):
             self.showMaximized()
         else:
             self.show()
+
+    def save_toolbar_visibility(self, visible):
+        settings = load_settings()
+        settings["design"]["toolbar_visible"] = visible
+        save_settings(settings)
+
+        if not visible:
+            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.central_widget.customContextMenuRequested.connect(self.show_global_context_menu)
+        else:
+            self.central_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
 
     def show_global_context_menu(self, position):
         self.global_context_menu.exec(self.essence_list_widget.mapToGlobal(position))
@@ -2810,7 +2892,7 @@ class Meganimus(QMainWindow):
                     restored_selection_item = item
 
             except (IOError, tomlkit.exceptions.ParseError) as e:
-                print(tr("ERROR_LOADING_FILE", file=essence_file, error=e))
+                print(f"[Meganimus]: Error loading file {essence_file}: {e}")
 
         # Restores the selection
         if restored_selection_item:
@@ -3036,7 +3118,7 @@ class Meganimus(QMainWindow):
                     loop.quit()
 
                 def on_icon_error(error_msg):
-                    print(error_msg)
+                    print(f"[Meganimus]: {error_msg}")
                     loop.quit()
 
                 icon_loader.finished.connect(on_icon_finished)
@@ -3074,7 +3156,7 @@ class Meganimus(QMainWindow):
                 downloads.append((essence_name, toml_file, icon_cache_path))
 
             except Exception as e:
-                print(tr("AUTO_TRANSFER_GENERAL_ERROR", essence_name=essence_name, error=str(e)))
+                print(f"[Meganimus]: General error in {essence_name}: {e}")
             finally:
                 completed += 1
                 progress_dialog.setValue(completed)

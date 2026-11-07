@@ -4,9 +4,17 @@
   <url type="homepage">https://github.com/Kyuyrii/Meganimus</url>
   <url type="bugtracker">https://github.com/Kyuyrii/Meganimus/issues</url>
   <url type="vcs-browser">https://github.com/Kyuyrii/Meganimus</url>
-  <developer_name>Kyuyrii</developer_name>
+  <developer id="io.github.kyuyrii">
+    <name>Kyuyrii</name>
+  </developer>
   <name>Meganimus</name>
-  <summary>A shortcut creator for games</summary>
+  <summary>A game shortcut creator.</summary>
+
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <display_length compare="ge">768</display_length>
+  </recommends>
 
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
@@ -17,14 +25,18 @@
   </categories>
   <description>
     <p>
-      A shortcut creator for games. Making it easy to create shortcuts for native games, games that run via emulators, and games that run via Wine or UMU.
+      A game shortcut creator. Making it easy to create shortcuts for native games, games that run via emulators, and games that run via Wine or UMU.
     </p>
   </description>
   <releases>
-    <release version="4.5" date="2026-10-28">
+    <release version="5.0" date="2026-11-07">
       <description>
         <ul>
-          <li>Attempting to add support for the Snap version of the Wine executor.</li>
+          <li>Added function to use real paths even when using the Document Portal.</li>
+          <li>Added command for Eden Flatpak.</li>
+          <li>Essence menubar removed.</li>
+          <li>Toolbar re-added and moved to the left.</li>
+          <li>Terminal messages are no longer translated.</li>
         </ul>
       </description>
     </release>
@@ -36,8 +48,8 @@
   </branding>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Kyuyrii/Meganimus/4f33ef3977aa734be059caa901c99cfa3cc1efe3/metainfo/meganimus_qt_style_breeze.png</image>
-      <caption>Meganimus using the Qt style Breeze</caption>
+      <image>https://raw.githubusercontent.com/Kyuyrii/Meganimus/84907f05c39c9ebf8805d9060871c3a8097953af/metainfo/meganimus_lubuntu.png</image>
+      <caption>Meganimus on Lubuntu</caption>
     </screenshot>
   </screenshots>
 
