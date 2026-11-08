@@ -29,14 +29,11 @@
     </p>
   </description>
   <releases>
-    <release version="5.0" date="2026-11-07">
+    <release version="5.1" date="2026-11-08">
       <description>
         <ul>
-          <li>Added function to use real paths even when using the Document Portal.</li>
-          <li>Added command for Eden Flatpak.</li>
-          <li>Essence menubar removed.</li>
-          <li>Toolbar re-added and moved to the left.</li>
-          <li>Terminal messages are no longer translated.</li>
+          <li>Added option to use a "Catppuccin Frappé" theme.</li>
+          <li>Interface icons now come from QtAwesome.</li>
         </ul>
       </description>
     </release>
@@ -48,7 +45,7 @@
   </branding>
   <screenshots>
     <screenshot type="default">
-      <image width="1568" height="900">https://raw.githubusercontent.com/Kyuyrii/Meganimus/84907f05c39c9ebf8805d9060871c3a8097953af/metainfo/meganimus_lubuntu.png</image>
+      <image width="1568" height="900">https://raw.githubusercontent.com/Kyuyrii/Meganimus/b49e2ad7989354d6022b4bc1fa94d6d8fd0e2121/metainfo/Meganimus_Lubuntu_KvArcDark.png</image>
       <caption>Meganimus on Lubuntu</caption>
     </screenshot>
   </screenshots>

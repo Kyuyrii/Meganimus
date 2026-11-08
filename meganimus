@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 from functools import partial
 import ast
+import qtawesome as qta
 
 if os.environ.get("SNAP"):
     __package_type__ = " [Snap]"
@@ -23,7 +24,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "5.0" + __package_type__
+__version__ = "5.1" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -51,23 +52,6 @@ else:
     meganimus_gui_dir = meganimus_dir / "gui"
     meganimus_config_dir = meganimus_dir / "config"
     meganimus_settings_file = meganimus_config_dir / "meganimus-settings.toml"
-
-if os.environ.get("XDG_CURRENT_DESKTOP", "").lower() not in ("kde", "lxqt"):
-    add_essence_icon = "list-add"
-    document_open_folder_icon = "folder-open"
-    document_open_icon = "document-open"
-    edit_essence_icon = "document-edit"
-    help_about_icon = "help-about"
-    search_icon = "system-search"
-    transfer_arts_icon = "down"
-else:
-    add_essence_icon = "list-add-symbolic"
-    document_open_folder_icon = "folder-open-symbolic"
-    document_open_icon = "document-open-symbolic"
-    edit_essence_icon = "document-edit-symbolic"
-    help_about_icon = "help-about-symbolic"
-    search_icon = "edit-find-symbolic"
-    transfer_arts_icon = "download-symbolic"
 
 # Translation System
 try:
@@ -156,6 +140,25 @@ try:
 except ImportError:
     print("[Meganimus]: PyQt6 not found")
     sys.exit(1)
+
+def cat_frappe_theme():
+    palette = QApplication.palette()
+
+    palette.setColor(QPalette.ColorRole.Window, QColor("#232634"))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor("#c6d0f5"))
+    palette.setColor(QPalette.ColorRole.Base, QColor("#292c3c"))
+    palette.setColor(QPalette.ColorRole.Text, QColor("#c6d0f5"))
+    palette.setColor(QPalette.ColorRole.Button, QColor("#414559"))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor("#c6d0f5"))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#8caaee"))
+    palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#232634"))
+    palette.setColor(QPalette.ColorRole.Link, QColor("#ca9ee6"))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#51576d"))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#c6d0f5"))
+    palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("#838ba7"))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor("#e78284"))
+
+    QApplication.setPalette(palette)
 
 ESSENCE_LOCALE_OPTIONS = [
     'English USA (en_US.UTF-8)',
@@ -254,6 +257,7 @@ def create_default_settings() -> dict:
             "icon_width_grid": 298,
             "search_bar_visible": False,
             "executor_filter_index": 0,
+            "cat_frappe_theme": False,
         },
         "window": {
             "isMaximized": "",
@@ -543,6 +547,11 @@ class SettingsDialog(QDialog):
                 partial(self._on_package_type_changed, executor_name, path_input, browse_btn, default_commands))
             browse_btn.clicked.connect(partial(self.browse_executor, executor_name))
 
+        # Cat Frappe theme
+        self.cat_frappe_theme = QCheckBox(tr("CAT_FRAPPE_THEME"))
+        self.cat_frappe_theme.setChecked(self.settings["design"].get("cat_frappe_theme", False))
+        layout.addWidget(self.cat_frappe_theme, 7, 0, alignment=Qt.AlignmentFlag.AlignLeft)
+
         # Save Button
         save_btn = QPushButton(tr("SAVE_BUTTON"))
         save_btn.clicked.connect(self.save_and_close)
@@ -621,6 +630,8 @@ class SettingsDialog(QDialog):
         self.settings["design"]["layout_mode"] = ["classic", "grid", "list"][self.layout_mode_combo.currentIndex()]
         self.settings["other"]["sgdb_apikey"] = self.api_input.text().strip()
 
+        self.settings["design"]["cat_frappe_theme"] = self.cat_frappe_theme.isChecked()
+
         # Save all executors
         for executor_name, widgets in self.executor_widgets.items():
             package_text = widgets["package_combo"].currentText()
@@ -671,13 +682,15 @@ class AddEssenceDialog(QDialog):
 
         # Button to select file
         self.game_file_button = QPushButton()
-        self.game_file_button.setIcon(QIcon.fromTheme(document_open_icon))
+        self.game_file_button.setIcon(qta.icon('fa6s.file'))
+        self.game_file_button.setIconSize(QSize(16, 16))
         self.game_file_button.setToolTip(tr("FILE"))
         self.game_file_button.clicked.connect(self.select_file)
 
         # Button to select folder
         self.game_folder_button = QPushButton()
-        self.game_folder_button.setIcon(QIcon.fromTheme(document_open_folder_icon))
+        self.game_folder_button.setIcon(qta.icon('fa6s.folder-open'))
+        self.game_folder_button.setIconSize(QSize(16, 16))
         self.game_folder_button.setToolTip(tr("FOLDER"))
         self.game_folder_button.clicked.connect(self.select_folder)
 
@@ -698,7 +711,8 @@ class AddEssenceDialog(QDialog):
         self.wineprefix_label = QLabel(tr("WINEPREFIX"))
         self.wineprefix_input = QLineEdit()
         self.wineprefix_button = QPushButton()
-        self.wineprefix_button.setIcon(QIcon.fromTheme(document_open_folder_icon))
+        self.wineprefix_button.setIcon(qta.icon('fa6s.folder-open'))
+        self.wineprefix_button.setIconSize(QSize(16, 16))
         self.wineprefix_button.setToolTip(tr("BROWSE_BUTTON"))
         self.wineprefix_button.clicked.connect(self.select_wineprefix)
         self.main_layout.addWidget(self.wineprefix_label, 3, 0)
@@ -709,7 +723,8 @@ class AddEssenceDialog(QDialog):
         self.essence_gui_label = QLabel(tr("ESSENCE_GUI_PATH"))
         self.essence_gui_input = QLineEdit()
         self.essence_gui_button = QPushButton()
-        self.essence_gui_button.setIcon(QIcon.fromTheme(document_open_icon))
+        self.essence_gui_button.setIcon(qta.icon('fa6s.file'))
+        self.essence_gui_button.setIconSize(QSize(16, 16))
         self.essence_gui_button.setToolTip(tr("BROWSE_BUTTON"))
         self.essence_gui_button.clicked.connect(self.select_essence_gui)
         self.main_layout.addWidget(self.essence_gui_label, 4, 0)
@@ -1064,7 +1079,8 @@ class MultipleCreateEssencesDialog(QDialog):
         prefix_label = QLabel(tr("WINEPREFIX"))
         prefix_input = QLineEdit("")
         prefix_button = QPushButton()
-        prefix_button.setIcon(QIcon.fromTheme(document_open_folder_icon))
+        prefix_button.setIcon(qta.icon('fa6s.folder-open'))
+        prefix_button.setIconSize(QSize(16, 16))
         prefix_button.setToolTip(tr("BROWSE_BUTTON"))
         prefix_layout.addWidget(prefix_label)
         prefix_layout.addWidget(prefix_input)
@@ -1423,11 +1439,13 @@ class MultipleEditEssenceDialog(QDialog):
         self.game_label = QLabel(tr("GAME_PATH"))
         self.game_input = QLineEdit(tr("DO_NOT_CHANGE"))
         self.game_file_button = QPushButton()
-        self.game_file_button.setIcon(QIcon.fromTheme(document_open_icon))
+        self.game_file_button.setIcon(qta.icon('fa6s.file'))
+        self.game_file_button.setIconSize(QSize(16, 16))
         self.game_file_button.setToolTip(tr("FILE"))
         self.game_file_button.clicked.connect(self.select_file)
         self.game_folder_button = QPushButton()
-        self.game_folder_button.setIcon(QIcon.fromTheme(document_open_folder_icon))
+        self.game_folder_button.setIcon(qta.icon('fa6s.folder-open'))
+        self.game_folder_button.setIconSize(QSize(16, 16))
         self.game_folder_button.setToolTip(tr("FOLDER"))
         self.game_folder_button.clicked.connect(self.select_folder)
 
@@ -1447,7 +1465,8 @@ class MultipleEditEssenceDialog(QDialog):
         self.wineprefix_label = QLabel(tr("WINEPREFIX"))
         self.wineprefix_input = QLineEdit(tr("DO_NOT_CHANGE"))
         self.wineprefix_button = QPushButton()
-        self.wineprefix_button.setIcon(QIcon.fromTheme(document_open_folder_icon))
+        self.wineprefix_button.setIcon(qta.icon('fa6s.folder-open'))
+        self.wineprefix_button.setIconSize(QSize(16, 16))
         self.wineprefix_button.setToolTip(tr("BROWSE_BUTTON"))
         self.wineprefix_button.clicked.connect(self.select_wineprefix)
         right_layout.addWidget(self.wineprefix_label, row, 0)
@@ -1459,7 +1478,8 @@ class MultipleEditEssenceDialog(QDialog):
         self.gui_label = QLabel(tr("ESSENCE_GUI_PATH"))
         self.gui_input = QLineEdit(tr("DO_NOT_CHANGE"))
         self.gui_button = QPushButton()
-        self.gui_button.setIcon(QIcon.fromTheme(document_open_icon))
+        self.gui_button.setIcon(qta.icon('fa6s.file'))
+        self.gui_button.setIconSize(QSize(16, 16))
         self.gui_button.setToolTip(tr("BROWSE_BUTTON"))
         self.gui_button.clicked.connect(self.select_essence_gui)
         right_layout.addWidget(self.gui_label, row, 0)
@@ -2133,7 +2153,7 @@ class ShortcutManager(QDialog):
         buttons_layout.addWidget(self.locations_btn)
 
         self.paths_info_button = QPushButton()
-        self.paths_info_button.setIcon(QIcon.fromTheme(help_about_icon))
+        self.paths_info_button.setIcon(qta.icon('fa6s.circle-info'))
         self.paths_info_button.clicked.connect(self.show_paths_info)
         buttons_layout.addWidget(self.paths_info_button)
 
@@ -2567,6 +2587,9 @@ class Meganimus(QMainWindow):
         # Only set if style exists on this system
         if wanted and wanted != "indefinite" and wanted in QStyleFactory.keys():
             QApplication.setStyle(wanted)
+        # Apply Cat Frappe theme if enabled
+        if settings["design"].get("cat_frappe_theme", False):
+            cat_frappe_theme()
         self.setWindowTitle(tr("APP_NAME"))
         self.setMinimumSize(300, 160)
         self.essence_process = None
@@ -2642,19 +2665,19 @@ class Meganimus(QMainWindow):
         # Size of icons
         self.toolbar.setIconSize(QSize(32, 32))
 
-        self.edit_essence_action = QAction(QIcon.fromTheme(edit_essence_icon), tr("MODIFY_ESSENCE"), self)
+        self.edit_essence_action = QAction(qta.icon('fa6s.pen-to-square'), tr("MODIFY_ESSENCE"), self)
         self.edit_essence_action.triggered.connect(self.edit_essence)
         self.toolbar.addAction(self.edit_essence_action)
 
-        self.add_essence_action = QAction(QIcon.fromTheme(add_essence_icon), tr("CREATE_ESSENCE"), self)
+        self.add_essence_action = QAction(qta.icon('fa6s.plus'), tr("CREATE_ESSENCE"), self)
         self.add_essence_action.triggered.connect(self.add_essence)
         self.toolbar.addAction(self.add_essence_action)
 
-        self.transfer_arts_action = QAction(QIcon.fromTheme(transfer_arts_icon), tr("TRANSFER_ICONS"), self)
+        self.transfer_arts_action = QAction(qta.icon('fa6s.download'), tr("TRANSFER_ICONS"), self)
         self.transfer_arts_action.triggered.connect(self.run_sgdb_auto_transfer)
         self.toolbar.addAction(self.transfer_arts_action)
 
-        self.search_action = QAction(QIcon.fromTheme(search_icon), tr("SEARCH"), self)
+        self.search_action = QAction(qta.icon('fa6s.magnifying-glass'), tr("SEARCH"), self)
         self.search_action.triggered.connect(self.toggle_search_bar)
         self.toolbar.addAction(self.search_action)
 
@@ -3009,7 +3032,7 @@ class Meganimus(QMainWindow):
                     icon.addPixmap(pixmap, QIcon.Mode.Disabled, QIcon.State.Off)
 
         if icon is None:
-            icon = QIcon.fromTheme("applications-games")
+            icon = qta.icon('mdi.gamepad')
 
         if layout_mode != "list" and icon is not None:
             item.setIcon(icon)

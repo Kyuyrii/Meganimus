@@ -16,7 +16,7 @@
 </h1>
 
 <p align="center">
-  <img width="842" height="483" src="metainfo/meganimus_lubuntu.png" />
+  <img width="842" height="483" src="metainfo/Meganimus_Lubuntu_KvArcDark.png" />
 </p>
 
 ## Some explanations
