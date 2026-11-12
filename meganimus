@@ -24,7 +24,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "5.1" + __package_type__
+__version__ = "5.2" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -1805,7 +1805,6 @@ class EssenceInfoViewerDialog(QDialog):
         # Left widget: Search, combobox, list
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
 
         # Search bar
         self.search_box = QLineEdit()
@@ -3097,7 +3096,8 @@ class Meganimus(QMainWindow):
         QApplication.processEvents()
 
         # Cache directory for icons
-        icons_tmp_dir = Path(tempfile.gettempdir()) / "Meganimus" / "sgdb_icons"
+        cache_base = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "Meganimus"
+        icons_tmp_dir = cache_base / "sgdb_icons"
         icons_tmp_dir.mkdir(parents=True, exist_ok=True)
 
         completed = 0
@@ -3218,6 +3218,8 @@ class Meganimus(QMainWindow):
 
         # Clear downloads list to free memory
         downloads.clear()
+
+        shutil.rmtree(cache_base, ignore_errors=True)
 
         if not self._cancel_auto and not progress_dialog.wasCanceled():
             QMessageBox.information(self, tr("APP_NAME"), tr("AUTO_TRANSFER_FINISHED"))
