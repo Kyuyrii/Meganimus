@@ -4,6 +4,7 @@
   <url type="homepage">https://github.com/Kyuyrii/Meganimus</url>
   <url type="bugtracker">https://github.com/Kyuyrii/Meganimus/issues</url>
   <url type="vcs-browser">https://github.com/Kyuyrii/Meganimus</url>
+  <url type="contact">https://github.com/Kyuyrii/Zordeer/issues</url>
   <developer id="io.github.kyuyrii">
     <name>Kyuyrii</name>
   </developer>
@@ -29,11 +30,10 @@
     </p>
   </description>
   <releases>
-    <release version="5.2" date="2026-11-12">
+    <release version="5.3" date="2026-11-13">
       <description>
         <ul>
-          <li>Added option to use a "Catppuccin Frappé" theme.</li>
-          <li>Interface icons now come from QtAwesome.</li>
+          <li>Removing unnecessary translations</li>
         </ul>
       </description>
     </release>

@@ -24,7 +24,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "5.2" + __package_type__
+__version__ = "5.3" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -3338,7 +3338,7 @@ class ArtworkLoader(QThread):
             self.finished.emit(results)
 
         except Exception as e:
-            self.error.emit(tr("ARTS_LOAD_ERROR", error=str(e)))
+            self.error.emit(f"[Meganimus]: Failed to load arts: {e}")
 
 if __name__ == "__main__":
     # Loads settings
