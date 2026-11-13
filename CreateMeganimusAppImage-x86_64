@@ -2,9 +2,6 @@
 
 sudo apt install python3-venv -y
 
-# Clean previous builds
-rm -rf AppDir build dist venv Meganimus.spec Meganimus*.AppImage
-
 python3 -m venv venv
 source venv/bin/activate
 pip install pyinstaller PyQt6 PyQt6-Qt6 tomlkit requests qtawesome
