@@ -24,7 +24,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "5.3" + __package_type__
+__version__ = "5.4" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
@@ -2466,9 +2466,16 @@ class ShortcutManager(QDialog):
         wineprefix = essence_info.get("wineprefix", "").strip()
         language = essence_info.get('language', '').strip()
 
+        # Load settings once
+        settings = load_settings()
+        executor_cmd = settings["executor"].get(f"{executor.lower()}_command", "").strip()
+        executor_package_type = settings["executor"].get(f"{executor.lower()}_package_type", "indefinite")
+
+        wine_flatpak = (executor == "Wine" and executor_package_type == "Flatpak")
+
         # Build environment variables
         env_list = []
-        if wineprefix:
+        if wineprefix and not wine_flatpak:
             env_list.append(f'WINEPREFIX="{wineprefix}"')
 
         # Add locale variables if language is set
@@ -2518,14 +2525,17 @@ class ShortcutManager(QDialog):
         if executor == "Linux":
             cmd_parts.append(f'"{game_path}"')
         else:
-            settings = load_settings()
-            executor_cmd = settings["executor"].get(f"{executor.lower()}_command", "").strip()
-            executor_package_type = settings["executor"].get(f"{executor.lower()}_package_type", "indefinite")
-
             # Only add quotes if package_type is indefinite
             if executor_package_type == "indefinite":
                 cmd_parts.append(f'"{executor_cmd}"')
             else:
+                if wine_flatpak and wineprefix:
+                    env_arg = f'--env="WINEPREFIX={wineprefix}"'
+                    parts = executor_cmd.split(" ", 2)
+                    if len(parts) == 3:
+                        executor_cmd = f'{parts[0]} {parts[1]} {env_arg} {parts[2]}'
+                    else:
+                        executor_cmd = f'{executor_cmd} {env_arg}'
                 cmd_parts.append(executor_cmd)
 
             executor_args = executors_args.get(executor, {"executor_args": ""}).get("executor_args", "").strip()
