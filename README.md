@@ -12,7 +12,9 @@
 <a href="https://snapcraft.io/meganimus">
     <img width='180' alt="Get it from the Snap Store" src=https://snapcraft.io/en/dark/install.svg />
   </a>
-
+<a href='https://flathub.org/apps/io.github.kyuyrii.meganimus'>
+    <img width='168' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/>
+  </a>
 </h1>
 
 <p align="center">
