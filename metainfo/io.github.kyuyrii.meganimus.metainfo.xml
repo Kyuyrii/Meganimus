@@ -30,10 +30,10 @@
     </p>
   </description>
   <releases>
-    <release version="5.4" date="2026-11-14">
+    <release version="5.5" date="2026-11-19">
       <description>
         <ul>
-          <li>Fixing the command creation issue when using the Flatpak version of Wine.</li>
+          <li>Added support for the Snap version of the xemu executor.</li>
         </ul>
       </description>
     </release>
