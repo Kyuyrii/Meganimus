@@ -30,10 +30,10 @@
     </p>
   </description>
   <releases>
-    <release version="5.5" date="2026-11-19">
+    <release version="5.6" date="2026-11-21">
       <description>
         <ul>
-          <li>Added support for the Snap version of the xemu executor.</li>
+          <li>The beginning of .desktop filenames has been changed to use the APP_ID.</li>
         </ul>
       </description>
     </release>

@@ -24,8 +24,10 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "5.5" + __package_type__
+__version__ = "5.6" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
+
+APP_ID = "io.github.kyuyrii.meganimus"
 
 if "MEGANIMUS_HOME_DIR" in os.environ:
     meganimus_home_dir = Path(os.environ["MEGANIMUS_HOME_DIR"])
@@ -2211,9 +2213,15 @@ class ShortcutManager(QDialog):
                                for name, data in self.essences.items()
                                if "safe_essence_name" in data}
 
-            for f in folder_path.glob("meganimus-*.desktop"):
+            for f in folder_path.glob("*.desktop"):
                 if self.is_meganimus_desktop(f):
-                    safe_name = f.stem.replace("meganimus-", "")
+                    stem = f.stem
+                    if stem.startswith(f"{APP_ID}-"):
+                        safe_name = stem.replace(f"{APP_ID}-", "", 1)
+                    elif stem.startswith("meganimus-"):
+                        safe_name = stem.replace("meganimus-", "", 1)
+                    else:
+                        continue
                     if safe_name in safe_to_display:
                         existing_desktops.add(safe_to_display[safe_name])
 
@@ -2276,7 +2284,8 @@ class ShortcutManager(QDialog):
         if not file_path.exists() or file_path.suffix != ".desktop":
             return False
 
-        return file_path.stem.startswith("meganimus-")
+        return (file_path.stem.startswith(f"{APP_ID}-") or
+                file_path.stem.startswith("meganimus-"))
 
     def load_essences(self) -> dict:
         essences = {}
@@ -2372,12 +2381,13 @@ class ShortcutManager(QDialog):
         if not folder.exists():
             return
 
-        for f in folder.glob("meganimus-*.desktop"):
-            try:
-                if self.is_meganimus_desktop(f):
-                    f.unlink()
-            except Exception as e:
-                print(f"[Meganimus]: Error removing {f}: {e}")
+        for pattern in (f"{APP_ID}-*.desktop", "meganimus-*.desktop"):
+            for f in folder.glob(pattern):
+                try:
+                    if self.is_meganimus_desktop(f):
+                        f.unlink()
+                except Exception as e:
+                    print(f"[Meganimus]: Error removing {f}: {e}")
 
     def update_and_apply(self):
         desktop_dir = Path(self.desktop_dir_input.text().strip())
@@ -2437,8 +2447,8 @@ class ShortcutManager(QDialog):
             self.create_desktop_file(name, checked, applications_dir)
 
         # Set executable permissions
-        os.system(f'chmod +x "{desktop_dir}/"meganimus-*.desktop 2>/dev/null')
-        os.system(f'chmod +x "{applications_dir}/"meganimus-*.desktop 2>/dev/null')
+        os.system(f'chmod +x "{desktop_dir}/"{APP_ID}-*.desktop 2>/dev/null')
+        os.system(f'chmod +x "{applications_dir}/"{APP_ID}-*.desktop 2>/dev/null')
 
         # Rebuild checkboxes to reflect new state on disk
         self.build_tab_checkboxes("desktop")
@@ -2549,7 +2559,7 @@ class ShortcutManager(QDialog):
 
         game_line = " ".join(cmd_parts)
 
-        desktop_file = folder / f"meganimus-{safe_name}.desktop"
+        desktop_file = folder / f"{APP_ID}-{safe_name}.desktop"
         gui_path = essence_data.get("gui_path", "")
         if not gui_path or not Path(gui_path).exists():
             gui_path = "applications-games"
@@ -2606,8 +2616,11 @@ class Meganimus(QMainWindow):
         # Add the icon to the main window
         self.meganimus_icon_path = None
         local_icons = [
-        "/snap/meganimus/current/meta/gui/icon.png", "/snap/meganimus/current/meta/gui/icon.svg",
-        "io.github.kyuyrii.meganimus.png", "io.github.kyuyrii.meganimus.svg"]
+            "/snap/meganimus/current/meta/gui/icon.png",
+            "/snap/meganimus/current/meta/gui/icon.svg",
+            f"{APP_ID}.png",
+            f"{APP_ID}.svg",
+        ]
 
         icon_set = False
         for icon_file in local_icons:
@@ -2617,7 +2630,7 @@ class Meganimus(QMainWindow):
                 icon_set = True
                 break
         if not icon_set:
-            icon = QIcon.fromTheme("io.github.kyuyrii.meganimus")
+            icon = QIcon.fromTheme(APP_ID)
             if not icon.isNull():
                 self.setWindowIcon(icon)
 
@@ -3367,13 +3380,12 @@ if __name__ == "__main__":
         app.installTranslator(translator)
 
     # The application ID is needed so that Wayland can find the icon.
-    app_id = "io.github.kyuyrii.meganimus"
-    app.setDesktopFileName(app_id)
+    app.setDesktopFileName(APP_ID)
 
     # Helper function to send command to already running instance
     def send_to_running_instance(message: str) -> bool:
         socket = QLocalSocket()
-        socket.connectToServer("io.github.kyuyrii.meganimus")
+        socket.connectToServer(APP_ID)
         if socket.waitForConnected(300):
             socket.write(message.encode("utf-8"))
             socket.flush()
@@ -3401,7 +3413,7 @@ if __name__ == "__main__":
 
     def is_instance_alive() -> bool:
         socket = QLocalSocket()
-        socket.connectToServer("io.github.kyuyrii.meganimus")
+        socket.connectToServer(APP_ID)
         if socket.waitForConnected(300):
             socket.write(b"--heartbeat")
             socket.flush()
@@ -3410,7 +3422,7 @@ if __name__ == "__main__":
                 socket.disconnectFromServer()
                 if response == "alive":
                     return True
-        QLocalServer.removeServer("io.github.kyuyrii.meganimus")
+        QLocalServer.removeServer(APP_ID)
         return False
 
     # If another instance is already running, exit
@@ -3419,7 +3431,7 @@ if __name__ == "__main__":
 
     window = Meganimus()
 
-    window.server_name = "io.github.kyuyrii.meganimus"
+    window.server_name = APP_ID
     window.server = QLocalServer(window)
     window.server.listen(window.server_name)
     window.server.newConnection.connect(handle_new_connection)
