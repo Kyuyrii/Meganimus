@@ -24,7 +24,7 @@ elif os.environ.get("APPIMAGE"):
 else:
     __package_type__ = ""
 
-__version__ = "5.6" + __package_type__
+__version__ = "5.7" + __package_type__
 __creator__ = "<a href='https://github.com/Kyuyrii'>Kyuyrii</a>"
 
 APP_ID = "io.github.kyuyrii.meganimus"
@@ -290,6 +290,7 @@ def create_default_settings() -> dict:
             "mgba_command": "",
             "pcsx2_package_type": "indefinite",
             "pcsx2_command": "",
+            "ppsspp_package_type": "indefinite",
             "ppsspp_command": "",
             "rmg_package_type": "indefinite",
             "rmg_command": "",
@@ -457,7 +458,7 @@ class SettingsDialog(QDialog):
             "RMG": {"Snap": "", "Flatpak": "flatpak run com.github.Rosalie241.RMG"},
             "RPCS3": {"Snap": "snap run rpcs3-emulator", "Flatpak": "flatpak run net.rpcs3.RPCS3"},
             "Ryubing": {"Snap": "snap run ryubing-emulator", "Flatpak": "flatpak run io.github.ryubing.Ryujinx"},
-            "Snes9x": {"Snap": "snap run snes9x-gtk", "Flatpak": "flatpak run com.snes9x.Snes9x"},
+            "Snes9x": {"Snap": "snap run snes9x-qt", "Flatpak": "flatpak run com.snes9x.Snes9x"},
             "UMU": {"Snap": "snap run umu-run", "Flatpak": "flatpak run org.openwinecomponents.umu.umu-launcher"},
             "Wine": {"Snap": "snap run winehq-stable", "Flatpak": "flatpak run org.winehq.Wine"},
             "xemu": {"Snap": "snap run xemu-emulator", "Flatpak": "flatpak run app.xemu.xemu"},
