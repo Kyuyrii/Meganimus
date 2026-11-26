@@ -30,10 +30,10 @@
     </p>
   </description>
   <releases>
-    <release version="5.7" date="2026-11-26">
+    <release version="5.8" date="2026-11-26">
       <description>
         <ul>
-          <li>The GTK version of Snes9x has been replaced by the Qt version in Snap.</li>
+          <li>Replacing the .local folder selection with .local/share/applications</li>
         </ul>
       </description>
     </release>
